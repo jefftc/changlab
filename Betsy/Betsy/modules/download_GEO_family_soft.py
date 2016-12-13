@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         """given a GEOID  get the family soft file"""
         from genomicode import filelib
-        from Betsy import module_utils
         
         metadata = {}
         GSEID = user_options['GSEID']

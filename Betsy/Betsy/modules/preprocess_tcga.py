@@ -8,7 +8,6 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         import subprocess
-        from Betsy import module_utils
         from genomicode import config
         from genomicode import filelib
         in_data = antecedents

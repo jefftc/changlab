@@ -7,7 +7,7 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
-        import numpy
+        #import numpy
         import arrayio
         from genomicode import jmath
         from Betsy import gene_ranking

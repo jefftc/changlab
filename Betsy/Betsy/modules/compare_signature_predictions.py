@@ -11,7 +11,6 @@ class Module(AbstractModule):
         import os
         import arrayio
         from genomicode import filelib
-        from Betsy import module_utils
         data_node1, data_node2, data_node3 = antecedents
         assert 'probabilities.pcl' in os.listdir(data_node1.identifier)
         assert 'probabilities.pcl' in os.listdir(data_node2.identifier)

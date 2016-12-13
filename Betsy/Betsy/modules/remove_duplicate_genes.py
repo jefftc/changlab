@@ -10,7 +10,6 @@ class Module(AbstractModule):
         """remove duplicate genes"""
         import arrayio
         from genomicode import filelib
-        from Betsy import module_utils
         in_data = antecedents
         M = arrayio.read(in_data.identifier)
         if out_attributes['unique_genes'] == 'average_genes':

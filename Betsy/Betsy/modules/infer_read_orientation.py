@@ -74,8 +74,6 @@ def get_paired_orientation(
     # Return tuple of ("ff", "fr", or "rf"; reads_ns; reads_fr;
     # reads_rf; reads_ff).
     import os
-    import shutil
-    import tempfile
     import multiprocessing
     #from genomicode import genomelib
     from genomicode import alignlib

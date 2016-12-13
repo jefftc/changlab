@@ -10,7 +10,6 @@ class Module(AbstractModule):
         from genomicode import filelib
         import os
         import arrayio
-        from Betsy import module_utils
         from genomicode import config
         from genomicode import arrayplatformlib
         in_data = antecedents
@@ -60,10 +59,6 @@ class Module(AbstractModule):
             return None
 
 
-
-
-    
-    
     def name_outfile(self, antecedents, user_options):
         from Betsy import module_utils
         original_file = module_utils.get_inputid(antecedents.identifier)

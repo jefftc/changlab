@@ -8,7 +8,6 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
         from Betsy import read_label_file
-        from Betsy import module_utils
         
         cls_node_test, data_node = antecedents
         text = open(data_node.identifier).readlines()

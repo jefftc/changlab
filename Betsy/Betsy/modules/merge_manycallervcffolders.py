@@ -135,7 +135,7 @@ def find_vcf_files(vcf_path):
     
     import os
     from genomicode import filelib
-    from genomicode import vcflib
+    #from genomicode import vcflib
 
     filenames = filelib.list_files_in_path(
         vcf_path, endswith=".vcf", case_insensitive=True)

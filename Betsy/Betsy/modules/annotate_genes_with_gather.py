@@ -10,7 +10,6 @@ class Module(AbstractModule):
         import urllib
         import urllib2
         from genomicode import filelib
-        from Betsy import module_utils
 
         in_data = antecedents
         kwargs = {

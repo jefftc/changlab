@@ -10,7 +10,6 @@ class Module(AbstractModule):
         import arrayio
         from genomicode import filelib
         from genomicode import pcalib
-        from Betsy import module_utils
         
         in_data = antecedents
         M = arrayio.read(in_data.identifier)

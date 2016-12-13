@@ -9,7 +9,7 @@ there are changes to one part of the code that breaks other parts.
 There are certainly going to be bugs and incompatibilities.  However,
 we do try to code defensively so that problems lead to tracebacks and
 errors, rather than incorrect results.  If you get an error, or
-something doesn't seem to be working, please let us know.
+something doesn't seem to be working, PLEASE LET US KNOW.
 
 Most of the code here is written in Python, although there are some C
 code and R scripts as well.
@@ -290,7 +290,7 @@ missing).
 
 
 - NGS ChIP-Seq programs.
-  Please install if doing variant calling from NGS data.
+  Please install if doing peak finding from ChIP-Seq data.
 
   MACS 1.4   http://liulab.dfci.harvard.edu/MACS/
   MACS 2     https://github.com/taoliu/MACS

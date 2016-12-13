@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         from genomicode import quantnorm
         import arrayio
-        from Betsy import module_utils
         from genomicode import filelib
         in_data = antecedents
         M = arrayio.read(in_data.identifier)

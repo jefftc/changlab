@@ -9,7 +9,7 @@ class Module(AbstractModule):
         outfile):
         """select a num of genes according to num_features"""
         import arrayio
-        from Betsy import module_utils
+        #from Betsy import module_utils
         
         in_data = antecedents
         

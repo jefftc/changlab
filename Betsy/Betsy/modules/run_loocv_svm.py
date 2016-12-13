@@ -13,7 +13,7 @@ class Module(AbstractModule):
         from Betsy import bie3
         from Betsy import rulebase
         from Betsy import read_label_file
-        from Betsy import module_utils
+        
         data_node, cls_node = antecedents
         M = arrayio.read(data_node.identifier)
         a, training_label, second_line = read_label_file.read(cls_node.identifier)

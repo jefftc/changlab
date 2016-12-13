@@ -9,7 +9,7 @@
 # add_column
 # copy_column
 # add_desc_for_gmx
-# 
+#
 # add_header_line
 # fill_empty_headers
 # remove_header_line
@@ -31,6 +31,7 @@
 # lower_annots
 # set_value_if_empty
 # set_value_if_not_empty
+# set_value_if_other_annot_equals
 # copy_value_if_empty
 # copy_value_if_empty_header
 # copy_value_if_empty_same_header
@@ -43,6 +44,7 @@
 # merge_annots_to_new_col
 # merge_annots_to_new_col_skip_empty
 # split_annots
+# split_annots_and_take_elem
 # split_chr_start_end
 #
 # tcga_relabel_patient_barcodes
@@ -88,7 +90,7 @@
 def parse_indexes(MATRIX, indexes_str, allow_duplicates=False,
                   check_range=True):
     # Takes 1-based indexes and returns a list of 0-based indexes.
-    # 
+    #
     # Example inputs:
     # 5
     # 1,5,10
@@ -133,7 +135,7 @@ def indexes_matrix(MATRIX, indexes_list):
     # indexes is a list of strings indicating indexes.  Parse this and
     # return a submatrix consisting of just those indexes.
     from genomicode import AnnotationMatrix
-    
+
     if not indexes_list:
         return MATRIX
     I = []
@@ -149,7 +151,7 @@ def select_cols_str(MATRIX, cols_str):
     if not cols_str:
         return MATRIX
     from genomicode import AnnotationMatrix
-    
+
     I = []
     for i, h in enumerate(MATRIX.headers):
         found = False
@@ -166,7 +168,7 @@ def select_cols_substr(MATRIX, cols_substr):
     if not cols_substr:
         return MATRIX
     from genomicode import AnnotationMatrix
-    
+
     I = []
     for i, h in enumerate(MATRIX.headers):
         found = False
@@ -205,7 +207,7 @@ def select_if_annot_startswith(MATRIX, arg):
     if not arg:
         return MATRIX
     from genomicode import AnnotationMatrix
-    
+
     x = arg.split(",")
     assert len(x) == 2, "Format: <header>,<value>"
     header, value = x
@@ -351,7 +353,7 @@ def remove_header_line(filename, read_as_csv):
     matrix = jmath.transpose(matrix)
     for x in matrix:
         print "\t".join(map(str, x))
-    
+
 
 def remove_duplicate_headers(MATRIX, remove_dups):
     if not remove_dups:
@@ -388,7 +390,7 @@ def rename_duplicate_headers(MATRIX, rename_dups):
 
     x = AnnotationMatrix.replace_headers(MATRIX, nodup)
     return x
-    
+
 
 def rename_header(MATRIX, rename_list):
     # rename_list is list of strings in format of: <from>,<to>.
@@ -419,7 +421,7 @@ def rename_header(MATRIX, rename_list):
     headers = [convert.get(x, x) for x in MATRIX.headers]
     x = AnnotationMatrix.replace_headers(MATRIX, headers)
     return x
-        
+
 
 def rename_header_i(MATRIX, rename_list):
     # rename_list is list of strings in format of: <index>,<to>.
@@ -467,7 +469,7 @@ def replace_header(MATRIX, replace_list):
             headers[i] = x
     x = AnnotationMatrix.replace_headers(MATRIX, headers)
     return x
-        
+
 
 def replace_header_re(MATRIX, replace_list):
     # replace_list is list of strings in format of: <from re>,<to>.
@@ -543,7 +545,7 @@ def prepend_to_headers(MATRIX, prepend_to_headers):
             headers[i] = "%s%s" % (prefix, headers[i])
     x = AnnotationMatrix.replace_headers(MATRIX, headers)
     return x
-    
+
 
 def add_column(MATRIX, add_column):
     # add_column is list of strings in format of: <index>,<header>,<default>.
@@ -569,7 +571,7 @@ def add_column(MATRIX, add_column):
         index = int(index) - 1
         last_index = index
         add_all.append((index, header, default_value))
-        
+
     # Since the hashed header names might change, keep track of the
     # indexes for each header.
     h_indexes = [("OLD", i) for i in range(len(MATRIX.headers))]
@@ -631,8 +633,48 @@ def add_uid_column(MATRIX, arg):
     all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
     headers.insert(index, header)
     all_annots.insert(index, uid_annots)
-    
+
     return AnnotationMatrix.create_from_annotations(headers, all_annots)
+
+
+def stratify_by_rank(MATRIX, args):
+    # Format: <index>;<breakpoints>
+    if not args:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+    import analyze_clinical_outcome as aco
+
+    jobs = []
+    for arg in args:
+        x = arg.split(";")
+        if len(x) != 2:
+            x = arg.split(",")
+        assert len(x) == 2, "format should be: <index>;<breakpoints>"
+        header, breakpoints = x
+        index = MATRIX.normalize_header_i(header, index_base1=True)
+        breakpoints = aco.parse_rank_cutoffs(breakpoints)
+        x = index, breakpoints
+        jobs.append(x)
+
+    for x in jobs:
+        index, cutoffs = x
+        h = MATRIX.headers_h[index]
+        annots = MATRIX.header2annots[h]
+        I = [i for i, x in enumerate(annots) if x.strip()]
+        scores = [float(annots[i]) for i in I]
+        groups = aco.discretize_by_value(scores, cutoffs)
+        assert len(groups) == len(scores)
+
+        new_header = "%s Groups" % MATRIX.headers[index]
+        new_annots = [""] * len(annots)
+        for i, oi in enumerate(I):
+            new_annots[oi] = groups[i]
+
+        headers = MATRIX.headers + [new_header]
+        x = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+        all_annots = x + [new_annots]
+        MATRIX = AnnotationMatrix.create_from_annotations(headers, all_annots)
+    return MATRIX
 
 
 def copy_column(MATRIX, copy_column):
@@ -697,7 +739,7 @@ def set_value_if_empty(MATRIX, params):
     for x in jobs:
         index, value = x
         h = MATRIX.headers_h[index]
-        
+
         # Change the annotations in place.
         annots = MATRIX.header2annots[h]
         for i in range(len(annots)):
@@ -724,12 +766,50 @@ def set_value_if_not_empty(MATRIX, params):
     for x in jobs:
         index, value = x
         h = MATRIX.headers_h[index]
-        
+
         # Change the annotations in place.
         annots = MATRIX.header2annots[h]
         for i in range(len(annots)):
             if annots[i].strip():
                 annots[i] = value
+    return MATRIX
+
+
+def set_value_if_other_annot_equals(MATRIX, args):
+    # Format: <this_index 1-based>,<this_value>,<other_index>,<other_value>
+    if not args:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    # list of (this index 0-based, this value, other_index, other_value)
+    jobs = []
+    for arg in args:
+        x = arg.split(";")
+        if len(x) != 4:
+            x = arg.split(",")
+        assert len(x) == 4, "format should be: " + \
+               "<this_index 1-based>,<this_value>,<other_index>,<other_value>"
+        this_h, this_value, other_h, other_value = x
+        this_index = MATRIX.normalize_header_i(this_h)
+        other_index = MATRIX.normalize_header_i(other_h)
+        assert this_index is not None, "Could not find header: %s" % this_h
+        assert other_index is not None, "Could not find header: %s" % other_h
+        x = this_index, this_value, other_index, other_value
+        jobs.append(x)
+
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        this_index, this_value, other_index, other_value = x
+
+        this_h = MATRIX.headers_h[this_index]
+        other_h = MATRIX.headers_h[other_index]
+
+        # Change the annotations in place.
+        this_annots = MATRIX.header2annots[this_h]
+        other_annots = MATRIX.header2annots[other_h]
+        for i in range(len(this_annots)):
+            if other_annots[i] == other_value:
+                this_annots[i] = this_value
     return MATRIX
 
 
@@ -828,11 +908,11 @@ def copy_value_if_empty_same_header(MATRIX, copy_values):
         x = MATRIX.header2annots[header]
         x = [x.strip() for x in x]
         MATRIX.header2annots[header] = x
-    
+
     for indexes in copy_indexes:
         all_headers = [MATRIX.headers_h[i] for i in indexes]
         all_annots = [MATRIX.header2annots[x] for x in all_headers]
-        
+
         for i_dst, annots_dst in enumerate(all_annots):
             I = [i for (i, x) in enumerate(annots_dst) if not x]
             for k in I:
@@ -866,7 +946,7 @@ def strip_all_annots(MATRIX, strip):
     if not strip:
         return MATRIX
     from genomicode import AnnotationMatrix
-    
+
     header2annots = {}
     for header_h, annots in MATRIX.header2annots.iteritems():
         annots = [x.strip() for x in annots]
@@ -879,7 +959,7 @@ def upper_annots(MATRIX, upper):
     if not upper:
         return MATRIX
     from genomicode import AnnotationMatrix
-    
+
     I = parse_indexes(MATRIX, upper)
     header2annots = MATRIX.header2annots.copy()
     for i in I:
@@ -896,8 +976,8 @@ def lower_annots(MATRIX, lower):
     if not lower:
         return MATRIX
     from genomicode import AnnotationMatrix
-    
-    I = parse_indexes(MATRIX, lower)    
+
+    I = parse_indexes(MATRIX, lower)
     header2annots = MATRIX.header2annots.copy()
     for i in I:
         assert i >= 0 and i < len(MATRIX.headers_h)
@@ -1021,7 +1101,7 @@ def prepend_to_annots(MATRIX, prepend_annot):
 def apply_re_to_annots(MATRIX, apply_annots):
     # list of strings in format of: <indexes 1-based>;<regular expression>
     import re
-    
+
     if not apply_annots:
         return MATRIX
 
@@ -1103,7 +1183,7 @@ def merge_annots_to_new_col(MATRIX, merge_annots):
 
     headers = MATRIX.headers[:]
     all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
-    
+
     for x in jobs:
         src_indexes, dst_name, merge_char = x
 
@@ -1142,7 +1222,7 @@ def merge_annots_to_new_col_skip_empty(MATRIX, merge_annots):
 
     headers = MATRIX.headers[:]
     all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
-    
+
     for x in jobs:
         src_indexes, dst_name, merge_char = x
 
@@ -1203,6 +1283,51 @@ def split_annots(MATRIX, split_annots):
                 # change in place
                 if i < len(split_annots[j]):
                     dst_annots[j] = split_annots[j][i]
+    return MATRIX
+
+
+def split_annots_and_take_elem(MATRIX, args):
+    if not args:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    jobs = []   # list of (src index 0-based, char, elem 0-based, dst header)
+    for arg in args:
+        x = arg.split(";")
+        if len(x) != 4:
+            x = arg.split(",")
+        assert len(x) == 4, (
+            "Format should be: "
+            "<src index>;<split_char>;<element index>;<new header>")
+        src_index_str, split_char, elem_index_str, new_header = x
+        src_index = MATRIX.normalize_header_i(src_index_str, index_base1=True)
+        assert src_index is not None, "Unknown header: %s" % x
+        elem_index = int(elem_index_str)
+        assert elem_index >= 1
+        elem_index -= 1
+        x = src_index, split_char, elem_index, new_header
+        jobs.append(x)
+
+    for x in jobs:
+        src_index, split_char, elem_index, new_header = x
+
+        h = MATRIX.headers_h[src_index]
+        src_annots = MATRIX.header2annots[h]
+        dst_annots = []
+        for annot in src_annots:
+            split_annots = annot.split(split_char)
+            ann = ""
+            if len(split_annots) > elem_index:
+                ann = split_annots[elem_index]
+            dst_annots.append(ann)
+        assert len(dst_annots) == len(src_annots)
+
+        headers = MATRIX.headers + [new_header]
+        x = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
+        all_annots = x + [dst_annots]
+        assert len(headers) == len(all_annots)
+        MATRIX = AnnotationMatrix.create_from_annotations(headers, all_annots)
+
     return MATRIX
 
 
@@ -1383,7 +1508,7 @@ def tcga_label_by_tissue_type(MATRIX, arg):
         if x is None:
             x = barcode
         dst_annots[i] = x
-        
+
     return MATRIX
 
 
@@ -1438,7 +1563,7 @@ def _calc_two_annots(MATRIX, calc_annots, calc_fn):
             a2 = float(a2)
             annots_dest[i] = calc_fn(a1, a2)
         MATRIX.header2annots[h_dest] = annots_dest
-    
+
     return MATRIX
 
 
@@ -1480,7 +1605,7 @@ def all_same(MATRIX, all_same):
 def min_annots(MATRIX, min_annots):
     # format: <indexes 1-based>;<dest index>
     from genomicode import jmath
-    
+
     if not min_annots:
         return MATRIX
 
@@ -1510,7 +1635,7 @@ def min_annots(MATRIX, min_annots):
 def max_annots(MATRIX, max_annots):
     # format: <indexes 1-based>;<dest index>
     from genomicode import jmath
-    
+
     if not max_annots:
         return MATRIX
 
@@ -1541,7 +1666,7 @@ def add_to(MATRIX, add_to):
     # format: list of <header or index 1-based>,<number>
     if not add_to:
         return MATRIX
-    
+
     jobs = []  # list of (0-based index, number)
     for x in add_to:
         x = x.split(",")
@@ -1552,7 +1677,7 @@ def add_to(MATRIX, add_to):
         number = _int_or_float(number)
         x = index, number
         jobs.append(x)
-    
+
     MATRIX = MATRIX.copy()
     for x in jobs:
         index, number = x
@@ -1570,7 +1695,7 @@ def multiply_by(MATRIX, multiply_by):
     # format: list of <index 1-based>,<number>
     if not multiply_by:
         return MATRIX
-    
+
     jobs = []  # list of (0-based index, number)
     for x in multiply_by:
         x = x.split(",")
@@ -1580,7 +1705,7 @@ def multiply_by(MATRIX, multiply_by):
         number = float(number)
         x = index-1, number
         jobs.append(x)
-    
+
     MATRIX = MATRIX.copy()
     for x in jobs:
         index, number = x
@@ -1598,13 +1723,13 @@ def normalize_to_max(MATRIX, args):
     # format: list of <header>
     if not args:
         return MATRIX
-    
+
     jobs = []  # list of headers
     for x in args:
         h = MATRIX.normalize_header(x, index_base1=True)
         assert h is not None, "Unknown header: %s" % x
         jobs.append(h)
-    
+
     MATRIX = MATRIX.copy()
     for x in jobs:
         header = x
@@ -1625,7 +1750,7 @@ def log_base(MATRIX, log_base):
     if not log_base:
         return MATRIX
     import math
-    
+
     jobs = []  # list of (0-based index, base)
     for x in log_base:
         x = x.split(",")
@@ -1656,7 +1781,7 @@ def neg_log_base(MATRIX, log_base):
     if not log_base:
         return MATRIX
     import math
-    
+
     jobs = []  # list of (0-based index, base)
     for x in log_base:
         x = x.split(",")
@@ -1687,7 +1812,7 @@ def add_two_annots(MATRIX, add_annots):
     # Format: list of <annot 1>,<annot 2>,<dest>.  Each are 1-based
     # indexes.  dest is annot1 - annot2.
     return _calc_two_annots(MATRIX, add_annots, _add_annots)
-    
+
 
 def subtract_two_annots(MATRIX, subtract_annots):
     # Format: list of <annot 1>,<annot 2>,<dest>.  Each are 1-based
@@ -1731,7 +1856,7 @@ def divide_many_annots(MATRIX, divide_annots):
                 annots = MATRIX.header2annots[header_h]
                 num = float(annots[i])
                 annots[i] = num / den
-    
+
     return MATRIX
 
 
@@ -1775,7 +1900,7 @@ def round_annots(MATRIX, round_annots):
     # Format: list of <index>.  1-based indexes.
     if not round_annots:
         return MATRIX
-    
+
     indexes = []  # list of 0-based indexes
     for x in round_annots:
         I = parse_indexes(MATRIX, x)
@@ -1790,7 +1915,7 @@ def round_annots(MATRIX, round_annots):
         x = MATRIX.header2annots[header_h]
         x = [int(round(float(x))) for x in x]
         MATRIX.header2annots[header_h] = x
-    
+
     return MATRIX
 
 
@@ -1798,7 +1923,7 @@ def convert_percent_to_decimal(MATRIX, convert):
     # Format: list of <index>.  1-based indexes.
     if not convert:
         return MATRIX
-    
+
     indexes = []  # list of 0-based indexes
     for x in convert:
         I = parse_indexes(MATRIX, x)
@@ -1897,7 +2022,7 @@ def vcf_standardize(MATRIX, vcf_standardize):
             for (fs, gs) in zip(format_strings, genotype_strings)]
         genotypes[sample] = geno_dicts
     vcf = vcflib.VCFFile(MATRIX, samples, more_info, genotypes)
-    
+
 
     CHROM = "chrom"
     START = "start"
@@ -1944,7 +2069,7 @@ def vcf_standardize(MATRIX, vcf_standardize):
     headers = []
     header2annots = {}  # should contain no duplicates
     missing = []
- 
+
     # Set the common columns.
     for (dst_header, src_headers) in COMMON_COLUMNS:
         header_i = None
@@ -1969,7 +2094,7 @@ def vcf_standardize(MATRIX, vcf_standardize):
         for (dst_header, src_headers, info_member) in SPECIFIC_COLUMNS:
             if len(genotype_headers) > 1:
                 dst_header = "%s %s" % (sample, dst_header)
-            
+
             # If there is only one sample, look for the src_headers.
             if len(genotype_headers) == 1:
                 header_i = None
@@ -2035,7 +2160,7 @@ def vcf_remove_bad_coords(MATRIX, vcf_remove_bad_coords):
     end_annots = MATRIX.header2annots[END]
     start_annots = [x.lower() for x in start_annots]
     end_annots = [x.lower() for x in end_annots]
-    
+
     bad_indexes = {}
     for i in range(len(start_annots)):
         s, e = start_annots[i], end_annots[i]
@@ -2105,7 +2230,7 @@ def vcf_remove_multicalls(MATRIX, vcf_remove_multicalls):
         annots = [x for (i, x) in enumerate(annots) if i not in bad_indexes]
         MATRIX.header2annots[h] = annots
     return MATRIX
-    
+
 
 def vcf_extract_format_values(MATRIX, vcf_format):
     # Format: <format header>,<values header>,<value>[,value].
@@ -2157,7 +2282,7 @@ def vcf_extract_format_values(MATRIX, vcf_format):
                 values[i] = vals[j]
         headers.append(value_header)
         all_annots.append(values)
-                       
+
     headers_h = AnnotationMatrix.uniquify_headers(headers)
     assert len(headers_h) == len(all_annots)
     header2annots = {}
@@ -2197,14 +2322,14 @@ def vcf_extract_info_values(MATRIX, vcf_info):
             key, value = x
             d[key] = value
         annots_dict.append(d)
-        
+
     headers = MATRIX.headers[:]
     all_annots = [MATRIX.header2annots[x] for x in MATRIX.headers_h]
     for value_name in value_names:
         values = [d.get(value_name, "") for d in annots_dict]
         headers.append(value_name)
         all_annots.append(values)
-        
+
     return AnnotationMatrix.create_from_annotations(headers, all_annots)
 
 
@@ -2277,7 +2402,7 @@ def vcf_calc_vaf(MATRIX, calc_vaf):
         ref_index, alt_index, vaf_index = x1[0], x2[0], x3[0]
         x = ref_index, alt_index, vaf_index
         jobs.append(x)
-        
+
     MATRIX = MATRIX.copy()
     for x in jobs:
         ref_index, alt_index, vaf_index = x
@@ -2358,7 +2483,7 @@ def subtract_two_bed_lists(MATRIX, subtract_two_bed_lists):
     MATRIX.header2annots[h_dest] = annots_dest
     return MATRIX
 
-                            
+
 def subtract_value_from_bed_list(MATRIX, subtract_value_from_bed_list):
     # Format: <annot 1>,<annot 2>,<dest>.  Each are 1-based
     # indexes.  <annot 1> is comma-separated list of numbers.  May end
@@ -2526,13 +2651,17 @@ def main():
         "--add_desc_for_gmx", action="store_true",
         help='Add "na" to each column to turn this into a GMX geneset file.')
     group.add_argument(
-        "--add_uid_column", 
+        "--add_uid_column",
         help="Add a column that contains unique IDs.  "
         "Format: <index>,<header>,<prefix>.  The column will be "
         "added before <index> (1-based).  If <index> is 1, this will be "
         'the new first column.  If <index> is "END", this will be '
         "the last column.  Unique IDs will be <prefix><num>.")
-    
+    group.add_argument(
+        "--stratify_by_rank", action="append",
+        help="Stratify a column based on ranks and add a new column with "
+        "the groupings.  Format: <index>;<breakpoints>.  "
+        "Example of <breakpoints> is 0.25,0.50,0.75.  Default 0.50.  (MULTI)")
     group = parser.add_argument_group(title="Changing headers")
     group.add_argument(
         "--add_header_line", default=[], action="append",
@@ -2590,16 +2719,16 @@ def main():
         "--replace_header_re", default=[], action="append",
         help="Like replace_header, but <from> can be a regular expression.  "
         "Format: <from>,<to>.  <from> will be replaced with <to>.  (MULTI)")
-    
+
     group = parser.add_argument_group(title="Changing Annotations")
     group.add_argument(
         "--strip_all_annots", action="store_true",
         help="Get rid of spaces around each of the annotations.")
     group.add_argument(
-        "--upper_annots", 
+        "--upper_annots",
         help="Convert annotations to upper case.  Format: 1-based indexes.")
     group.add_argument(
-        "--lower_annots", 
+        "--lower_annots",
         help="Convert annotations to lower case.  Format: 1-based indexes.")
     group.add_argument(
         "--set_value_if_empty", default=[], action="append",
@@ -2609,6 +2738,12 @@ def main():
         "--set_value_if_not_empty", default=[], action="append",
         help="If an annotation is not empty, set with this value.  "
         "Format: <index 1-based>,<value>.  (MULTI)")
+    group.add_argument(
+        "--set_value_if_other_annot_equals", default=[], action="append",
+        help="If the annotation of another column is a specific value, "
+        "then set this annotation with this value.  Format: "
+        "<this_index 1-based>,<this_value>,<other_index>,<other_value>.  "
+        "(MULTI)")
     group.add_argument(
         "--copy_value_if_empty", default=[], action="append",
         help="If the dest column is empty, copy the value from the src "
@@ -2640,7 +2775,7 @@ def main():
         help="Replace a substring of an annotation with another substring.  "
         "Format: <indexes>;<src>;<dst>.  (MULTI)")
     group.add_argument(
-        "--rename_duplicate_annot", 
+        "--rename_duplicate_annot",
         help="If an annotation is duplicated, then rename them with unique "
         "names.  Format: <indexes>")
     group.add_argument(
@@ -2669,21 +2804,31 @@ def main():
         help="Split an annotation across columns.  "
         "Format: <src index>;<dst indexes>;<split char>.  "
         "There should be at least one dst index for each item split.  (MULTI)")
+
+    group.add_argument(
+        "--split_annots_and_take_elem", default=[], action="append",
+        help="Split an annotation, take one element, and put into new column. "
+        "Format: <src index>;<split_char>;<element index>;<new header>.  "
+        "For example, suppose the annotation has the syntax: "
+        '"NM_004091 // E2F2 // E2F transcription factor 2".  '
+        'Then "<index>;//;1;RefSeq ID" will split this by "//", pull out '
+        "the first element, and put it into a new column with header "
+        '"RefSeq ID".  (MULTI)')
     group.add_argument(
         "--split_chr_start_end", default=[], action="append",
         help='Split a chromosome location string (e.g. "chr1:320117-320142") '
         "into separate colummns: <chrom> <start> <end>.  "
         "Format: <header>.  <header> may be the name of the header, "
         "or a 1-based index.  (MULTI)")
-    
+
     group = parser.add_argument_group(title="TCGA barcode operations")
     group.add_argument(
-        "--tcga_relabel_patient_barcodes", 
+        "--tcga_relabel_patient_barcodes",
         help="Simplify barcodes to just the patient information.  "
         "Format: <header>.  <header> may be the name of the header, "
         "or a 1-based index.  Will change this column in place.")
     group.add_argument(
-        "--tcga_label_patient_barcodes", 
+        "--tcga_label_patient_barcodes",
         help="Simplify barcodes to just the patient information.  "
         "Format: <src header>,<dst header>.  <src header> may be the name "
         "of the header, or a 1-based index.  Will save the results to "
@@ -2738,7 +2883,7 @@ def main():
         "--normalize_to_max", default=[], action="append",
         help="Normalize all values in this column to the maximum value.  "
         "Format: <name>.  (MULTI)")
-    
+
     group.add_argument(
         "--log_base", default=[], action="append",
         help="Log a column with a specific base.  "
@@ -2781,11 +2926,11 @@ def main():
         "--convert_percent_to_decimal", default=[], action="append",
         help='Remove "%%" (if necessary) and divide by 100.  '
         "Format: <index>.  All indexes should be 1-based.  (MULTI)")
-    
+
 
     group = parser.add_argument_group(title="VCF files")
     group.add_argument(
-        "--vcf_standardize", 
+        "--vcf_standardize",
         help="Take a VCF file (from IACS, Platypus, or GATK) and put into "
         "a standard format.  "
         "Format:<info_header>,<format_header>[,<genotype_header>].  "
@@ -2801,13 +2946,13 @@ def main():
         help="Take a VCF file in standard format and make sure there is "
         "only one call per variant.")
     group.add_argument(
-        "--vcf_extract_format_values", 
+        "--vcf_extract_format_values",
         help="Take a VCF file and extract the values from the corresponding "
         "format column.  "
         "Format: <format header>,<values header>,<value>[,value].  "
         "Example: FORMAT,Sample1,RD,AD,DP,FREQ")
     group.add_argument(
-        "--vcf_extract_info_values", 
+        "--vcf_extract_info_values",
         help="Take a VCF file and extract the values from the INFO "
         "column.  Creates new columns."
         "Format: <INFO header>,<value>[,value].  "
@@ -2825,13 +2970,13 @@ def main():
 
     group = parser.add_argument_group(title="Application-Specific Stuff")
     ## group.add_argument(
-    ##     "--calc_blockSizes", 
+    ##     "--calc_blockSizes",
     ##     help="For BED files, calculate blockSizes from blockStarts and "
     ##     "blockEnds.  "
     ##     "Format: <blockStarts index>,<blockEnds index>,<index dest>.  "
     ##     "All indexes should be 1-based.")
     group.add_argument(
-        "--subtract_two_bed_lists", 
+        "--subtract_two_bed_lists",
         help="For BED files, subtract column 2 (comma-separated values) "
         "from column 1 (comma-separated values) and save to a third "
         "column (comma-separated values).  "
@@ -2839,7 +2984,7 @@ def main():
         "<index dest> = <index 1> - <index 2>.  "
         "All indexes should be 1-based.")
     group.add_argument(
-        "--subtract_value_from_bed_list", 
+        "--subtract_value_from_bed_list",
         help="For BED files, subtract column 2 (one value) "
         "from column 1 (comma-separated values) and save to a third "
         "column (comma-separated values).  "
@@ -2879,6 +3024,7 @@ def main():
     MATRIX = copy_column(MATRIX, args.copy_column)
     MATRIX = add_desc_for_gmx(MATRIX, args.add_desc_for_gmx)
     MATRIX = add_uid_column(MATRIX, args.add_uid_column)
+    MATRIX = stratify_by_rank(MATRIX, args.stratify_by_rank)
 
     # Changing the headers.
     MATRIX = fill_empty_headers(MATRIX, args.fill_empty_headers)
@@ -2902,6 +3048,8 @@ def main():
     MATRIX = lower_annots(MATRIX, args.lower_annots)
     MATRIX = set_value_if_empty(MATRIX, args.set_value_if_empty)
     MATRIX = set_value_if_not_empty(MATRIX, args.set_value_if_not_empty)
+    MATRIX = set_value_if_other_annot_equals(
+        MATRIX, args.set_value_if_other_annot_equals)
     MATRIX = copy_value_if_empty(MATRIX, args.copy_value_if_empty)
     MATRIX = copy_value_if_empty_header(
         MATRIX, args.copy_value_if_empty_header)
@@ -2919,6 +3067,8 @@ def main():
     MATRIX = merge_annots_to_new_col_skip_empty(
         MATRIX, args.merge_annots_to_new_col_skip_empty)
     MATRIX = split_annots(MATRIX, args.split_annots)
+    MATRIX = split_annots_and_take_elem(
+        MATRIX, args.split_annots_and_take_elem)
     MATRIX = split_chr_start_end(MATRIX, args.split_chr_start_end)
 
     # TCGA stuff

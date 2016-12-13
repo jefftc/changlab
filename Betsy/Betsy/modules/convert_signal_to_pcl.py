@@ -11,7 +11,6 @@ class Module(AbstractModule):
         import shutil
         import arrayio
         from genomicode import filelib
-        from Betsy import module_utils
         in_data = antecedents
         f = file(outfile, 'w')
         M = arrayio.choose_format(in_data.identifier)

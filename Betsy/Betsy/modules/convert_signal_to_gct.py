@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         """convert signal file to gct format"""
         import arrayio
-        from Betsy import module_utils
         
         in_data = antecedents
         M = arrayio.read(in_data.identifier)

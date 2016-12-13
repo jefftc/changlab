@@ -9,7 +9,7 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        from genomicode import parallel
+        #from genomicode import parallel
         from genomicode import hashlib
         from Betsy import module_utils as mlib
 

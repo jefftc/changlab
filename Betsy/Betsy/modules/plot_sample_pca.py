@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         from matplotlib import cm
         from Betsy import read_label_file
-        from genomicode import filelib
         
         data_node, cls_node = antecedents
         a, b, c = read_label_file.read(cls_node.identifier)
@@ -45,7 +44,7 @@ class Module(AbstractModule):
 def plot_pca(filename, result_fig, opts='b', legend=None):
     import arrayio
     from genomicode import jmath, mplgraph
-    from Betsy import module_utils
+    from genomicode import filelib
 
     R = jmath.start_R()
     jmath.R_equals(filename, 'filename')

@@ -13,7 +13,6 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import config
         #from genomicode import arraysetlib
-        from Betsy import module_utils
         
         cls_node_train, data_node_train = antecedents
         #result, label_line, class_name = read_label_file.read(

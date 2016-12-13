@@ -11,7 +11,6 @@ class Module(AbstractModule):
         from genomicode import smarray
         from genomicode import filelib
         from Betsy import gpr_module
-        from Betsy import module_utils
         
         in_data = antecedents
         #out_attributes = set_out_attributes(in_data, out_attributes)

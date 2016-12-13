@@ -8,7 +8,6 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
-        from genomicode import config
         from genomicode import parallel
         from genomicode import alignlib
         from genomicode import filelib

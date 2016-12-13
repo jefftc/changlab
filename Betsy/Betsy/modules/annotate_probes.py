@@ -10,7 +10,7 @@ class Module(AbstractModule):
         import arrayio
         from Betsy import module_utils
         from genomicode import config
-        from genomicode import arrayannot
+        #from genomicode import arrayannot
         from genomicode import arrayplatformlib
 
         M = arrayio.read(in_data.identifier)

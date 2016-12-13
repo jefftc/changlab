@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         """given a database ID and GPLID, get the cel files"""
         from genomicode import filelib
-        from Betsy import module_utils
         GSEID = user_options['GSEID']
         GPLID = None
         if 'GPLID' in user_options:

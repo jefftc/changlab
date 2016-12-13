@@ -10,7 +10,6 @@ class Module(AbstractModule):
         from genomicode import dwdnorm
         import arrayio
         from Betsy import read_label_file
-        from Betsy import module_utils
         from genomicode import filelib
         data_node, cls_node = antecedents
         # BUG: What happens if no antecedents?

@@ -9,10 +9,9 @@ class Module(AbstractModule):
         outfile):
         """convert family soft file to RenameFile"""
         from genomicode import filelib
-        from Betsy import module_utils
         in_data = antecedents
-        GSEID = user_options['GSEID']
-        title, description = extract_sample2desc(GSEID, in_data.identifier)
+        #GSEID = user_options['GSEID']
+        title, description = extract_sample2desc(in_data.identifier)
         if out_attributes['labels_from'] == 'title':
             convert_family_to_relabel_file(title, outfile)
         else:
@@ -30,7 +29,7 @@ class Module(AbstractModule):
         return filename
 
 
-def extract_sample2desc(GSEID, filename):
+def extract_sample2desc(filename):
     from genomicode.filelib import openfh
     title_dict = {}
     description_dict = {}

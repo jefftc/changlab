@@ -76,7 +76,6 @@ class Module(AbstractModule):
 def _make_trimmomatic_cmd(
     pair1, pair2, trimmed1, trimmed2, unpaired1, unpaired2, adapters_filename,
     num_threads=None):
-    import os
     from genomicode import config
     from genomicode import filelib
     from genomicode import parallel

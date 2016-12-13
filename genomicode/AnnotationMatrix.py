@@ -92,9 +92,9 @@ class AnnotationMatrix:
             pass
         else:
             if index_base1:
-                header_i = head_i - 1
+                header_i = header_i - 1
             assert header_i >= 0 and header_i < len(self.headers)
-            return self.headers_h[i]
+            return self.headers_h[header_i]
         return None
         #raise KeyError, header
     def normalize_header_i(self, header, index_base1=False):

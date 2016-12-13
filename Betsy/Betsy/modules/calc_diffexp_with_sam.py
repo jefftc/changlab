@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         import os
         import subprocess
-        from Betsy import module_utils
         from genomicode import config
         
         data_node, cls_node = antecedents

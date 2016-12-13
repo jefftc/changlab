@@ -7,7 +7,6 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
-        from Betsy import module_utils
         from genomicode import filelib
 
         in_data = antecedents
@@ -27,9 +26,10 @@ class Module(AbstractModule):
 
 def plot_hyb_bar(filename, outfile):
     from genomicode import mplgraph
+    from genomicode import filelib
     import math
     import numpy
-    from Betsy import module_utils
+    
     high = ['ILMN_2038770', 'ILMN_2038769']
     med = ['ILMN_2038768', 'ILMN_2038771']
     low = ['ILMN_1343050', 'ILMN_1343052']

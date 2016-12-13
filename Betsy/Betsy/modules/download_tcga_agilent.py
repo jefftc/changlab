@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         import os
         import subprocess
-        from Betsy import module_utils
         from genomicode import config
         from genomicode import filelib
         #out_attributes = set_out_attributes(in_data, out_attributes)

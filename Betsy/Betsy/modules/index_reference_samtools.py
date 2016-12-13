@@ -7,7 +7,6 @@ class Module(AbstractModule):
     def run(
         self, network, in_data, out_attributes, user_options, num_cores,
         out_path):
-        import os
         from genomicode import config
         from genomicode import filelib
         from genomicode import parallel

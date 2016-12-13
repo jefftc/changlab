@@ -9,7 +9,6 @@ class Module(AbstractModule):
         outfile):
         from genomicode import mplgraph
         from genomicode import filelib
-        from Betsy import module_utils
         in_data = antecedents
         matrix = [x for x in filelib.read_cols(in_data.identifier)]
         header = matrix[0]
