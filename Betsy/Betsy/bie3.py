@@ -242,7 +242,7 @@ CONST2STR = {
 # values is correct, but generates a combinatorial explosion that is
 # difficult to manage.
 DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = False
-#DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True
+#DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True    # DON'T DO THIS.
 
 MAX_NETWORK_SIZE = 1024 * 4
 
@@ -2277,6 +2277,10 @@ class _OptimizeMergeData1:
     def _is_separate_inputs(
         self, network, custom_attributes, nodeid2parents, node_id1, node_id2,
         bc_cache):
+        dt1 = network.nodes[node_id1].datatype.name
+        dt2 = network.nodes[node_id2].datatype.name
+        assert dt1 == dt2
+        
         # Find the common modules for both these nodes.
         children1 = _get_children_of(network, node_id1)
         children2 = _get_children_of(network, node_id2)
@@ -2288,6 +2292,13 @@ class _OptimizeMergeData1:
             module = network.nodes[module_id]
             if len(module.in_datatypes) == 1:
                 continue
+            # If the module has <= 1 input datatype of this type, then
+            # these can't be separate.
+            x = [x.name for x in module.in_datatypes]
+            x = [x for x in x if x == dt1]
+            if len(x) <= 1:
+                continue
+            
             if module_id not in bc_cache:
                 combos = _bc_to_input_ids(
                     network, module_id, custom_attributes,
@@ -5795,6 +5806,10 @@ def _bc_to_modules(moduledb, out_data):
 
     modules = []  # list of (module, num compatible attributes)
     for module in moduledb:
+        # Optimization.  The vast majority of the time, this won't
+        # match.  So save a function call.
+        if module.out_datatype.name != out_data.datatype.name:
+            continue
         if _is_valid_output(module, out_data):
             modules.append(module)
     return modules
@@ -6872,7 +6887,7 @@ def _is_valid_input_ids(
 
 
 DEBUG_IS_VALID_OUTPUT_CONFLICTS = []   # attribute conflicts
-def _is_valid_output(module, data):
+def _is_valid_output(module, data, save_conflicts=False):
     # Return whether this module can produce this data object.
 
     # A module cannot produce this data if:
@@ -6917,7 +6932,6 @@ def _is_valid_output(module, data):
         assert consequence.name in data.attributes
         data_value = data.attributes[consequence.name]
         data_type = _get_attribute_type(data_value)
-
         assert data_type in [TYPE_ATOM, TYPE_ENUM]
 
         if consequence.behavior == SET_TO:
@@ -6964,40 +6978,44 @@ def _is_valid_output(module, data):
 
         if case == 1:
             if data_value != outc_value:
-                conflicts.append((consequence.name, outc_value, data_value))
                 msg = ("Consequence '%s' requires '%s', "
                        "but data contains '%s'." %
                        (consequence.name, outc_value, data_value))
                 debug_print(DEBUG_BACKCHAIN, msg)
+                if not save_conflicts:
+                    return False
+                conflicts.append((consequence.name, outc_value, data_value))
                 found_conflict = True
-                #return False
         elif case == 2:
             # ModuleNode can produce any of a list of values.  Check
             # if the data's value can be produced by the module.
             if data_value not in outc_value:
-                conflicts.append((consequence.name, outc_value, data_value))
                 debug_print(
                     DEBUG_BACKCHAIN, "Consequence %s conflicts." %
                     consequence.name)
-                #return False
+                if not save_conflicts:
+                    return False
+                conflicts.append((consequence.name, outc_value, data_value))
                 found_conflict = True
         elif case == 3:
             # ModuleNode produces a specific value.  DataNode could be
             # one of many values.
             if outc_value not in data_value:
-                conflicts.append((consequence.name, outc_value, data_value))
                 debug_print(
                     DEBUG_BACKCHAIN, "Consequence %s conflicts." %
                     consequence.name)
-                #return False
+                if not save_conflicts:
+                    return False
+                conflicts.append((consequence.name, outc_value, data_value))
                 found_conflict = True
         elif case == 4:
             if not _intersect(data_value, outc_value):
-                conflicts.append((consequence.name, outc_value, data_value))
                 debug_print(
                     DEBUG_BACKCHAIN, "Consequence %s conflicts." %
                     consequence.name)
-                #return False
+                if not save_conflicts:
+                    return False
+                conflicts.append((consequence.name, outc_value, data_value))
                 found_conflict = True
         else:
             raise AssertionError
@@ -7065,23 +7083,25 @@ def _is_valid_output(module, data):
 
             if data_type == TYPE_ATOM:
                 if attrdef.default_in != data_value:
-                    conflicts.append(
-                        (attrdef.name, attrdef.default_in, data_value))
                     debug_print(
                         DEBUG_BACKCHAIN,
                         "Attr %r: Conflicts (module %r, data %r)." %
                         (attrdef.name, attrdef.default_in, data_value))
-                    #return False
+                    if not save_conflicts:
+                        return False
+                    conflicts.append(
+                        (attrdef.name, attrdef.default_in, data_value))
                     found_conflict = True
             elif data_type == TYPE_ENUM:
                 if attrdef.default_in not in data_value:
-                    conflicts.append(
-                        (attrdef.name, attrdef.default_in, data_value))
                     debug_print(
                         DEBUG_BACKCHAIN,
                         "Attr %r: Conflicts (module %r, data %r)." %
                         (attrdef.name, attrdef.default_in, data_value))
-                    #return False
+                    if not save_conflicts:
+                        return False
+                    conflicts.append(
+                        (attrdef.name, attrdef.default_in, data_value))
                     found_conflict = True
             else:
                 raise AssertionError
@@ -7089,6 +7109,7 @@ def _is_valid_output(module, data):
                 DEBUG_BACKCHAIN, "Attr %r: matches defaults." % attrdef.name)
 
     if found_conflict:
+        assert not save_conflicts   # should have exited already if true
         return False
 
     # TESTING.

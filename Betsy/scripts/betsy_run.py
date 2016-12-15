@@ -227,7 +227,7 @@ def check_more_than_one_node_network(network, rulebase):
     # 1 mismatch.
     attr2values = {}  # attr -> list of values
     for module in rulebase.all_modules:
-        assert not bie3._is_valid_output(module, node)
+        assert not bie3._is_valid_output(module, node, save_conflicts=True)
         # Print out conflicts
         conflicts = bie3.DEBUG_IS_VALID_OUTPUT_CONFLICTS
         if not conflicts:  # Can happen if data type doesn't match.
@@ -1891,6 +1891,6 @@ def main():
 
 
 if __name__ == '__main__':
-    #import cProfile as profile
-    #profile.runctx("main()", globals(), locals())
-    main()
+    import cProfile as profile
+    profile.runctx("main()", globals(), locals())
+    #main()
