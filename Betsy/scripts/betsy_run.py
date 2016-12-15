@@ -227,7 +227,7 @@ def check_more_than_one_node_network(network, rulebase):
     # 1 mismatch.
     attr2values = {}  # attr -> list of values
     for module in rulebase.all_modules:
-        assert not bie3._is_valid_output(module, node)
+        assert not bie3._is_valid_output(module, node, save_conflicts=True)
         # Print out conflicts
         conflicts = bie3.DEBUG_IS_VALID_OUTPUT_CONFLICTS
         if not conflicts:  # Can happen if data type doesn't match.
@@ -688,6 +688,7 @@ def prune_pipelines(
     if not paths:
         print "All pipelines pruned.  This can happen if:"
         print "  1.  There is a conflicting data attribute in the pipeline."
+        print "      Maybe an attribute is set for the wrong DataType?"
         print "  2.  A --mattr option is missing."
         print "  3.  There is a bug in the network generation."
         print "  4.  There is a bug in the pipeline pruning."
@@ -1366,28 +1367,36 @@ def main():
     from Betsy import bie3
 
     WORKFLOW = (
-        "1.  Look through the rulebase for the DataType of interest.\n"
-        "2.  Enter the output DataType.\n"
-        "FLAG: --output\n"
-        "3.  Browse through the list of possible combinations of input\n"
-        "    DataTypes.\n"
-        "4.  Select one or more input DataTypes.\n"
-        "    Now shows just the combinations that includes the input\n"
-        "    DataTypes requested.\n"
-        "FLAG: --input\n"
-        "5.  Configure the attributes of the inputs.\n"
-        "    Shows the detailed information about each node.\n"
-        "6.  System makes sure each node can be found in the network.\n"
-        "    If not, try to diagnose differences.\n"
-        "7.  System makes sure this is a complete set of input nodes.\n"
-        "8.  System makes sure all required module attributes are given.\n"
-        "9.  System makes sure all input files are provided.\n"
-        "10.  Actually run the analysis.\n"
-        "FLAG:--run\n"
+        " 1.  Look through the rulebase for the DataType of interest.\n"
+        "     Run betsy_run.py (by itself)\n"
+        " 2.  Specify the output DataType and its attributes.\n"
+        "     Add argument: --output\n"
+        "     Add argument(s): --dattr\n"
+        " 3.  Browse through the list of possible combinations of input\n"
+        "     DataTypes.\n"
+        " 4.  Select one or more input DataTypes.\n"
+        "     Now shows just the combinations that includes the input\n"
+        "     DataTypes requested.\n"
+        "     Add argument(s): --input\n"
+        " 5.  Configure the attributes of the inputs.\n"
+        "     Shows the detailed information about each node.\n"
+        "     Add argument(s): --dattr\n"
+        " 6.  System makes sure each node can be found in the network.\n"
+        "     If not, try to diagnose differences.\n"
+        " 7.  System makes sure this is a complete set of input nodes.\n"
+        " 8.  System makes sure all required module attributes are given.\n"
+        " 9.  System makes sure all input files are provided.\n"
+        "10.  Visualize the pipeline to make sure this is what you want.\n"
+        "     Plot the network: --network_png\n"
+        "11.  Configure the attributes to alter the pipeline, if necessary.\n"
+        "     Add argument(s): --dattr\n"
+        "     Add argument(s): --mattr\n"
+        "12.  Actually run the analysis.\n"
+        "     Add argument: --run\n"
         )
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="Hi!  I'm BETSY, and I'm here to do bioinformatics.\n\n"
+        description="Hi!  I'm BETSY, and I like to do bioinformatics.\n\n"
         "Workflow:\n%s\n\n" % WORKFLOW)
     #parser.add_argument(
     #    "--inputs_complete", action="store_const", const=True,
@@ -1882,6 +1891,6 @@ def main():
 
 
 if __name__ == '__main__':
-    #import cProfile as profile
-    #profile.runctx("main()", globals(), locals())
-    main()
+    import cProfile as profile
+    profile.runctx("main()", globals(), locals())
+    #main()

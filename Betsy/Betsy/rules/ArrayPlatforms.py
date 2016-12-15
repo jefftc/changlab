@@ -69,6 +69,9 @@ ControlFile = DataType(
         'preprocess', ["illumina"], "illumina", "illumina",
         help="preprocess for ControlFile"),
     AttributeDef(
+        "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
+        help="contents"),
+    AttributeDef(
         'missing_values', ["unknown", "no", "yes"], "no", "no",
         help="missing values yes or not"),
     AttributeDef(
@@ -76,9 +79,6 @@ ControlFile = DataType(
         "zero_fill", "zero_fill", help="missing algorithm"),
     AttributeDef("logged", ["no"], "no", "no", help="logged yes or not"),
     AttributeDef('format', ["gct"], "gct", "gct", help="file format"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
-        help="contents"),
     help="The control file in the ILLUFolder")
 
 GPRFiles = DataType(

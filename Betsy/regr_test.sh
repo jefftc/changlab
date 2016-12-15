@@ -172,7 +172,7 @@ betsy_run.py --network_png test16.png --network_json test16.txt \
   --output UnprocessedSignalFile \
   --dattr UnprocessedSignalFile.logged=no \
   --dattr UnprocessedSignalFile.preprocess=tpm \
-  --dattr FastqFolder.adapters_trimmed=yes \
+  --dattr RNASeqUnprocessedSignalFile.adapters_trimmed=yes \
   --mattr adapters_fasta=adapters/TruSeq3-PE-2.fa >& test16.log
 # RNA-Seq HTSeqCount.
 betsy_run.py --network_png test17.png --network_json test17.txt \

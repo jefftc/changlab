@@ -125,17 +125,17 @@ _SignalFile_Merge = DataType(
     #    "filter_and_threshold", YESNO, "no", "no",
     #    help="Whether the values are filtered and thresholded."),
     AttributeDef(
+        "quantile_norm", YESNO, "no", "no",
+        help="quantile normalization"),
+    AttributeDef(
+        "combat_norm", YESNO, "no", "no", help="combat normalization"),
+    AttributeDef(
         "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
     AttributeDef(
         "bfrm_norm", YESNO, "no", "no", help="bfrm normalization"),
     AttributeDef(
-        "quantile_norm", YESNO, "no", "no",
-        help="quantile normalization"),
-    AttributeDef(
         "shiftscale_norm", YESNO, "no", "no",
         help="shiftscale normalization"),
-    AttributeDef(
-        "combat_norm", YESNO, "no", "no", help="combat normalization"),
     help="The SignalFile after SignalFile_Impute, care dwd_norm,bfrm_norm,"\
           "quantile_norm,shiftscale_norm,combat_norm.",
     )
@@ -280,7 +280,8 @@ _SignalFile_Annotate = DataType(
         help="gene order method"),
     # _SignalFile_Annotate
     AttributeDef(
-        "annotate", YESNO, "no", "no", help="annotate file or not"),
+        "annotate", YESNO, "no", "no",
+        help="annotate file or not [WHAT DOES THIS MEAN?]"),
     AttributeDef(
         "rename_sample", YESNO, "no", "no",
         help="rename sample or not"),
@@ -371,12 +372,12 @@ SignalFile= DataType(
     "SignalFile",
     # UnprocessedSignalFile
     AttributeDef(
+        "contents", BDT.CONTENTS, "unspecified", "unspecified",
+        help="contents"),
+    AttributeDef(
         "preprocess", BDT.ANY_PREPROCESS, "unknown", 'any', 
         #"preprocess", PREPROCESS, "unknown", 'unknown',
         help="preprocess method"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
     AttributeDef(
         "logged", YESNO, "yes", "yes", help="logged or not"),
     AttributeDef("format", ["tdf", "gct"], "tdf", "tdf", help="file format"),
@@ -389,17 +390,17 @@ SignalFile= DataType(
         help="Whether missing values are filtered."),
     # _SignalFile_Merge
     AttributeDef(
-        "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
-    AttributeDef(
-        "bfrm_norm", YESNO, "no", "no", help="bfrm normalization"),
-    AttributeDef(
         "quantile_norm", YESNO, "no", "no",
         help="quantile normalization"),
+    AttributeDef(
+        "combat_norm", YESNO, "no", "no", help="combat normalization"),
+    AttributeDef(
+        "dwd_norm", YESNO, "no", "no", help="dwd normalization"),
     AttributeDef(
         "shiftscale_norm", YESNO, "no", "no",
         help="shiftscale normalization"),
     AttributeDef(
-        "combat_norm", YESNO, "no", "no", help="combat normalization"),
+        "bfrm_norm", YESNO, "no", "no", help="bfrm normalization"),
     # _SignalFile_Normalize
     AttributeDef(
         "gene_center", ["no", "mean", "median"], "no", "no",
