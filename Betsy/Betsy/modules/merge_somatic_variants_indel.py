@@ -13,10 +13,9 @@ class Module(AbstractModule):
         from genomicode import hashlib
         from Betsy import module_utils as mlib
 
-        CALLERS = [
-            "varscan", "strelka", "jointsnvmix",
-            ]
         vcf_paths = [x.identifier for x in antecedents]
+        nodes = [x.data for x in antecedents]
+        CALLERS = [x.attributes["caller"] for x in nodes]
         assert len(CALLERS) == len(vcf_paths)
         filelib.safe_mkdir(out_path)
         metadata = {}

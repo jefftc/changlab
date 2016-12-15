@@ -583,6 +583,7 @@ class DefaultAttributesFrom(object):
 
 class DataType:
     def __init__(self, name, *attribute_defs, **keywds):
+        assert type(name) is type("")
         for x in attribute_defs:
             assert isinstance(x, AttributeDef), repr(x)
         for x in keywds:
@@ -1015,9 +1016,9 @@ class ModuleNode:
     def _assert_consequence(self, name, in_datatypes, out_datatype,
                             constraints, consequence):
         import itertools
-        assert consequence.name in out_datatype.get_attribute_names(), \
-               "ModuleNode %r refers to an unknown attribute %r." % (
-            self.name, consequence.name)
+        assert consequence.name in out_datatype.get_attribute_names(), (
+            "ModuleNode %r refers to an unknown attribute %r in %s." % (
+                self.name, consequence.name, out_datatype.name))
 
         if consequence.behavior in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
             assert out_datatype.is_valid_attribute_value(
@@ -6870,6 +6871,7 @@ def _is_valid_input_ids(
     return False
 
 
+DEBUG_IS_VALID_OUTPUT_CONFLICTS = []   # attribute conflicts
 def _is_valid_output(module, data):
     # Return whether this module can produce this data object.
 
@@ -6892,6 +6894,11 @@ def _is_valid_output(module, data):
     #   e.g. download_geo_GSEID  gseid -> expression_files  (no attributes)
     #
     # These rules need to match the policies in _bc_to_one_input.
+    global DEBUG_IS_VALID_OUTPUT_CONFLICTS
+
+    # list of (attribute_name, required_value, data_value)
+    DEBUG_IS_VALID_OUTPUT_CONFLICTS = []
+    conflicts = DEBUG_IS_VALID_OUTPUT_CONFLICTS
 
     # If this module doesn't produce the same data type, then it can't
     # produce this data object.
@@ -6905,6 +6912,7 @@ def _is_valid_output(module, data):
                 (repr(module.name), str(data)))
     # If any of the consequences conflict, then the module can't produce
     # this data object.
+    found_conflict = False
     for consequence in module.consequences:
         assert consequence.name in data.attributes
         data_value = data.attributes[consequence.name]
@@ -6956,33 +6964,41 @@ def _is_valid_output(module, data):
 
         if case == 1:
             if data_value != outc_value:
+                conflicts.append((consequence.name, outc_value, data_value))
                 msg = ("Consequence '%s' requires '%s', "
                        "but data contains '%s'." %
                        (consequence.name, outc_value, data_value))
                 debug_print(DEBUG_BACKCHAIN, msg)
-                return False
+                found_conflict = True
+                #return False
         elif case == 2:
             # ModuleNode can produce any of a list of values.  Check
             # if the data's value can be produced by the module.
             if data_value not in outc_value:
+                conflicts.append((consequence.name, outc_value, data_value))
                 debug_print(
                     DEBUG_BACKCHAIN, "Consequence %s conflicts." %
                     consequence.name)
-                return False
+                #return False
+                found_conflict = True
         elif case == 3:
             # ModuleNode produces a specific value.  DataNode could be
             # one of many values.
             if outc_value not in data_value:
+                conflicts.append((consequence.name, outc_value, data_value))
                 debug_print(
                     DEBUG_BACKCHAIN, "Consequence %s conflicts." %
                     consequence.name)
-                return False
+                #return False
+                found_conflict = True
         elif case == 4:
             if not _intersect(data_value, outc_value):
+                conflicts.append((consequence.name, outc_value, data_value))
                 debug_print(
                     DEBUG_BACKCHAIN, "Consequence %s conflicts." %
                     consequence.name)
-                return False
+                #return False
+                found_conflict = True
         else:
             raise AssertionError
 
@@ -7049,22 +7065,31 @@ def _is_valid_output(module, data):
 
             if data_type == TYPE_ATOM:
                 if attrdef.default_in != data_value:
+                    conflicts.append(
+                        (attrdef.name, attrdef.default_in, data_value))
                     debug_print(
                         DEBUG_BACKCHAIN,
                         "Attr %r: Conflicts (module %r, data %r)." %
                         (attrdef.name, attrdef.default_in, data_value))
-                    return False
+                    #return False
+                    found_conflict = True
             elif data_type == TYPE_ENUM:
                 if attrdef.default_in not in data_value:
+                    conflicts.append(
+                        (attrdef.name, attrdef.default_in, data_value))
                     debug_print(
                         DEBUG_BACKCHAIN,
                         "Attr %r: Conflicts (module %r, data %r)." %
                         (attrdef.name, attrdef.default_in, data_value))
-                    return False
+                    #return False
+                    found_conflict = True
             else:
                 raise AssertionError
             debug_print(
                 DEBUG_BACKCHAIN, "Attr %r: matches defaults." % attrdef.name)
+
+    if found_conflict:
+        return False
 
     # TESTING.
     # If the module converts the datatype, the consequences don't

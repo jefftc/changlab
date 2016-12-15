@@ -45,25 +45,32 @@ class Module(AbstractModule):
 
 
     def name_outfile(self, antecedents, user_options):
-        return "jointsnvmix.vcf"
+        return "mutect2.vcf"
 
 
 def is_snp(var):
     from genomicode import vcflib
-    # FILTER is always "PASS" or "INDL"
-    assert len(var.filter_) == 1
-    x = var.filter[0]
-    assert x in ["PASS", "INDL"]
-    return vcflib.is_pass_filter(var, FILTER_doesnotcontain="INDL")
+    # REF and ALT are one base each.
+    # T  C
+    # A  G
+    assert type(var.ref) is type("")
+    assert len(var.alt) == 1
+    ref, alt = var.ref, var.alt[0]
+    assert len(ref) >= 1 and len(alt) >= 1
+    return len(ref) == 1 and len(alt) == 1
 
 
 def is_indel(var):
     from genomicode import vcflib
-    # FILTER is always "PASS" or "INDL"
-    assert len(var.filter_) == 1
-    x = var.filter[0]
-    assert x in ["PASS", "INDL"]
-    return vcflib.is_pass_filter(var, FILTER_doesnotcontain="PASS")
+    # REF and ALT are not one base
+    # TG  T
+    # CT  C
+    # G   GCTATCAGTAAGTA
+    assert type(var.ref) is type("")
+    assert len(var.alt) == 1
+    ref, alt = var.ref, var.alt[0]
+    assert len(ref) >= 1 and len(alt) >= 1
+    return len(ref) > 1 or len(alt) > 1
 
 
 def filter_by_vartype(vartype, infile, outfile):
@@ -82,5 +89,3 @@ def filter_by_vartype(vartype, infile, outfile):
         fn = is_indel
     vcf = vcflib.select_variants(vcf, fn)
     vcflib.write(outfile, vcf)
-
-

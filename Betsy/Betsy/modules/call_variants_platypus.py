@@ -36,6 +36,7 @@ class Module(AbstractModule):
             p, f = os.path.split(bam_filename)
             sample, ext = os.path.splitext(f)
             bai_filename = "%s.bai" % bam_filename
+            filelib.assert_exists_nz(bai_filename)
             x = sample.replace(" ", "_")
             local_bam = os.path.join(bam_path, "%s.bam" % x)
             local_bai = os.path.join(bam_path, "%s.bam.bai" % x)

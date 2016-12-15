@@ -56,7 +56,7 @@ class Module(AbstractModule):
         opj = os.path.join
         jobs = []   # list of filelib.GenericObject
         for bam_filename in bam_filenames:
-            # <path>/<sample>.bam
+            # <in_path>/<sample>.bam
             in_path, sample, ext = mlib.splitpath(bam_filename)
             assert ext == ".bam"
             clean_bam_filename = opj(out_path, "%s.bam" % sample)

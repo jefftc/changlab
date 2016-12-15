@@ -10,11 +10,14 @@ samtoolsCaller
 GATKCaller
 PlatypusCaller
 MuTectCaller
+MuTect2Caller
 VarScan2Caller
 SomaticSniperCaller
 StrelkaCaller
 JointSNVMixCaller
 MuSECaller
+RadiaCaller
+PindelCaller
 CALLERS              Global variable with all Caller classes.
 
 Functions:
@@ -396,8 +399,11 @@ class GATKCaller(Caller):
     def __init__(self):
         Caller.__init__(self, "GATK")
     def is_caller(self, header_lines):
+        # Older versions:
         # ##GATKCommandLine=<ID=HaplotypeCaller
-        x = [x for x in header_lines if x.startswith("##GATKCommandLine=")]
+        # Newer versions:
+        # ##GATKCommandLine.HaplotypeCaller=<ID=HaplotypeCaller
+        x = [x for x in header_lines if x.startswith("##GATKCommandLine")]
         # BUG: does not handle UnifiedGenotypeCalle
         x = [x for x in x if x.find("HaplotypeCaller") >= 0]
         if x:
@@ -524,9 +530,14 @@ class MuTectCaller(Caller):
     def __init__(self):
         Caller.__init__(self, "MuTect")
     def is_caller(self, header_lines):
+        # MuTect
         # ##GATKCommandLine=<ID=MuTect,Version=3.1-0-g72492bb,Date="Sun
+        # Mutect2
+        # ##GATKCommandLine.MuTect2=<ID=MuTect2,Version=3.6-0-g89b7209,Date=
+        # Make sure we're picking up MuTect and not MuTect2.
         x = [x for x in header_lines if x.startswith("##GATKCommandLine")]
         x = [x for x in x if x.find("MuTect") >= 0]
+        x = [x for x in x if x.find("MuTect,") >= 0]
         if x:
             return True
         return False
@@ -559,6 +570,52 @@ class MuTectCaller(Caller):
         return x
     def is_pass(self, filter_str):
         assert filter_str in ["PASS", "REJECT"]
+        return filter_str == "PASS"
+
+
+class MuTect2Caller(Caller):
+    # FORMAT:DP   Approximate read depth (MQ=255, bad mates filtered)
+    #             In header, but doesn't look like it's used.
+    # FORMAT:AD   Depth for ref and alt in order listed
+    # FORMAT:AF   alternate allele fraction  (variant allele frequency)
+    # FORMAT:GT   Genotype
+    def __init__(self):
+        Caller.__init__(self, "MuTect2")
+    def is_caller(self, header_lines):
+        # MuTect
+        # ##GATKCommandLine=<ID=MuTect,Version=3.1-0-g72492bb,Date="Sun
+        # Mutect2
+        # ##GATKCommandLine.MuTect2=<ID=MuTect2,Version=3.6-0-g89b7209,Date=
+        # Make sure we're picking up MuTect2 and not MuTect.
+        x = [x for x in header_lines if x.startswith("##GATKCommandLine")]
+        x = [x for x in x if x.find("MuTect2") >= 0]
+        if x:
+            return True
+        return False
+    def get_call(self, var, sample):
+        assert sample in var.sample2genodict, "Unknown sample: %s" % sample
+        genodict = var.sample2genodict[sample]
+        #total_reads = _parse_vcf_value(
+        #    genodict["DP"], to_int=1, len_exactly=1)[0]
+        x = _parse_vcf_value(genodict["AD"], to_int=1, len_at_least=2)
+        num_ref = x[0]
+        num_alt = x[1:]
+        vaf = _parse_vcf_value(
+            genodict["AF"], to_float=1, len_exactly=len(num_alt))
+        call = _parse_vcf_value(genodict["GT"], len_exactly=1)[0]
+        assert len(num_alt) == 1
+        total_reads = num_ref + num_alt[0]
+        return Call(num_ref, num_alt, total_reads, vaf, call)
+    def get_filter(self, var):
+        # Return:
+        # alt_allele_in_normal, clustered_events, germline_risk,
+        # homologous_mapping_event, multi_event_alt_allele_in_normal, 
+        # panel_of_normals, str_contraction, t_lod_fstar, 
+        # triallelic_site
+        # PASS
+        # Can be comma-separated combination as well.
+        return ",".join(var.filter_)
+    def is_pass(self, filter_str):
         return filter_str == "PASS"
 
 
@@ -1000,6 +1057,43 @@ class RadiaCaller(Caller):
         return filter_str == "PASS"
     
 
+class PindelCaller(Caller):
+    # FORMAT:RD    Reference depth, how many reads support the reference
+    #              Doesn't appear to be used?
+    # FORMAT:AD    Allele depth, how many reads support this allele
+    # FORMAT:GT    Genotype
+    # INFO:SVTYPE  Type of structural variant
+    def __init__(self):
+        Caller.__init__(self, "Pindel")
+    def is_caller(self, header_lines):
+        # ##source=pindel
+        x = [x for x in header_lines if x.startswith("##source=pindel")]
+        if x:
+            return True
+        return False
+    def get_call(self, var, sample):
+        assert sample in var.sample2genodict, "Unknown sample: %s" % sample
+        genodict = var.sample2genodict[sample]
+        x = _parse_vcf_value(genodict["AD"], to_int=1, len_at_least=2)
+        num_ref = x[0]
+        num_alt = x[1:]
+        assert len(num_alt) == 1
+        total_reads = num_ref + num_alt[0]
+        vaf = [float(x)/total_reads for x in num_alt]
+        call = _parse_vcf_value(genodict["GT"], len_exactly=1)[0]
+        return Call(num_ref, num_alt, total_reads, vaf, call)
+    def get_filter(self, var):
+        # Always "PASS".
+        # Return PASS.
+        assert len(var.filter_) == 1
+        x = var.filter_[0]
+        assert x == "PASS"
+        return x
+    def is_pass(self, filter_str):
+        assert filter_str == "PASS"
+        return True
+
+
 # List of classes
 CALLERS = [
     samtoolsCaller,
@@ -1008,12 +1102,14 @@ CALLERS = [
     NextGENeCaller,
     # Somatic Callers.
     MuTectCaller,
+    MuTect2Caller,
     VarScan2Caller,
     SomaticSniperCaller,
     StrelkaCaller,
     JointSNVMixCaller,
     MuSECaller,
     RadiaCaller,
+    PindelCaller,
     ]
 
 

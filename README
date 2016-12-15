@@ -269,11 +269,14 @@ missing).
   cancer genomes, compared against a background germline mutations.
 
   Mutect         http://archive.broadinstitute.org/cancer/cga/mutect
+  Mutect2        Distributed with recent versions of GATK.
   Varscan        http://varscan.sourceforge.net
   SomaticSniper  http://gmt.genome.wustl.edu/packages/somatic-sniper/
   MutationSeq    http://compbio.bccrc.ca/software/mutationseq/
   MuSE           http://bioinformatics.mdanderson.org/main/MuSE
   Strelka        https://sites.google.com/site/strelkasomaticvariantcaller/home
+  Pindel
+  Indelocator    Distributed with recent versions of GATK.
 
   Radia          https://github.com/aradenbaugh/radia
                  For calling mutations from RNA and DNA simultaneously.
