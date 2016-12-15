@@ -10,11 +10,12 @@
 #
 # RNASeqUnprocessedSignalFile  Contains attributes from RNA-Seq analysis.
 # 
-# StdRNASeqAnalysis          A standard RNA-Seq analysis.
+# CompleteRNASeqAnalysis     A complete RNA-Seq analysis.
 #                            FastQCSummary, FastQCFolder
 #                            RSeQCResults
 #                            BamFolder
 #                            UnprocessedSignalFile (TPM)
+#                            UnprocessedSignalFile (TPM, isoforms)
 #                            NumAlignedReads (Star alignment)
 #                            UnprocessedSignalFile (counts)
 #                            HTSeqCountSummary
@@ -155,13 +156,18 @@ RNASeqUnprocessedSignalFile = DataType(
         "adapters_trimmed", YESNO, "no", "no",
         help="Whether the adapters are trimmed."),
     AttributeDef("aligner", NGS.RNA_ALIGNERS, "star", "star"),
+
+    AttributeDef(
+        "expression_of", ["gene", "isoform"], "gene", "gene",
+        help="Whether to get expression for overall genes or "
+        "individual isoforms."),
     
     help="Contains attributes for an RNA-Seq analysis.",
     )
     
 
-StdRNASeqAnalysis = DataType(
-    "StdRNASeqAnalysis",
+CompleteRNASeqAnalysis = DataType(
+    "CompleteRNASeqAnalysis",
     AttributeDef(
         "adapters_trimmed", YESNO, "no", "no",
         help="Whether the adapters are trimmed."),
@@ -182,7 +188,7 @@ all_data_types = [
     HTSeqCountSummary,
     
     RNASeqUnprocessedSignalFile,
-    StdRNASeqAnalysis,
+    CompleteRNASeqAnalysis,
     ]
 
 
@@ -239,10 +245,10 @@ all_modules = [
         "extract_rsem_signal", RSEMResults, RNASeqUnprocessedSignalFile,
         #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
-        OptionDef(
-            "genes_or_isoforms", default="genes",
-            help='Get the expression value for "genes" (DEFAULT) or '
-            '"isoforms".'),
+        #OptionDef(
+        #    "genes_or_isoforms", default="genes",
+        #    help='Get the expression value for "genes" (DEFAULT) or '
+        #    '"isoforms".'),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SET_TO_ONE_OF, ["tpm", "fpkm"]),
@@ -251,9 +257,8 @@ all_modules = [
         Constraint("aligner", MUST_BE, "star"),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("align_to", MUST_BE, "genome"),
+        Consequence("expression_of", SET_TO_ONE_OF, ["gene", "isoform"]),
         ),
-
-    
 
     ModuleNode(
         "align_with_tophat",
@@ -425,6 +430,7 @@ all_modules = [
         Consequence("preprocess", SET_TO, "counts"),
         Consequence("logged", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),
+        Consequence("expression_of", SET_TO, "gene"),
         ),
     ModuleNode(
         "convert_counts_to_cpm",
@@ -441,15 +447,16 @@ all_modules = [
     ModuleNode(
         "do_std_rna_seq_analysis",
         [NGS.BamFolder,                      # 0
-         QC.FastQCSummary, QC.FastQCFolder,  # 1-2  # no trimming
-         QC.FastQCSummary, QC.FastQCFolder,  # 3-4  # trimmed
+         QC.FastQCSummary, QC.FastQCFolder,  # 1-2  no trimming
+         QC.FastQCSummary, QC.FastQCFolder,  # 3-4  trimmed
          QC.RSeQCResults,                    # 5
-         RNASeqUnprocessedSignalFile,        # 6
-         NGS.NumAlignedReads,                # 7
-         RNASeqUnprocessedSignalFile,        # 8
-         HTSeqCountSummary,                  # 9
+         RNASeqUnprocessedSignalFile,        # 6    gene expression
+         RNASeqUnprocessedSignalFile,        # 7    isoform expression
+         NGS.NumAlignedReads,                # 8
+         RNASeqUnprocessedSignalFile,        # 9
+         HTSeqCountSummary,                  # 10
          ],
-        StdRNASeqAnalysis,
+        CompleteRNASeqAnalysis,
         # BamFolder
         Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS, 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
@@ -466,17 +473,24 @@ all_modules = [
         Constraint("adapters_trimmed", SAME_AS, 0, 6),
         Constraint("logged", MUST_BE, "no", 6),
         Constraint("preprocess", MUST_BE, "tpm", 6),
-        # NumAlignedReads
+        Constraint("expression_of", MUST_BE, "gene", 6),
+        # RNASeqUnprocessedSignalFile
         Constraint("aligner", SAME_AS, 0, 7),
         Constraint("adapters_trimmed", SAME_AS, 0, 7),
-        # RNASeqUnprocessedSignalFile
+        Constraint("logged", MUST_BE, "no", 7),
+        Constraint("preprocess", MUST_BE, "tpm", 7),
+        Constraint("expression_of", MUST_BE, "isoform", 7),
+        # NumAlignedReads
         Constraint("aligner", SAME_AS, 0, 8),
         Constraint("adapters_trimmed", SAME_AS, 0, 8),
-        Constraint("logged", MUST_BE, "no", 8),
-        Constraint("preprocess", MUST_BE, "counts", 8),
-        # HTSeqCountSummary
+        # RNASeqUnprocessedSignalFile
         Constraint("aligner", SAME_AS, 0, 9),
         Constraint("adapters_trimmed", SAME_AS, 0, 9),
+        Constraint("logged", MUST_BE, "no", 9),
+        Constraint("preprocess", MUST_BE, "counts", 9),
+        # HTSeqCountSummary
+        Constraint("aligner", SAME_AS, 0, 10),
+        Constraint("adapters_trimmed", SAME_AS, 0, 10),
 
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT, 0),
