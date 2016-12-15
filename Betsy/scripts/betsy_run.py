@@ -520,6 +520,7 @@ def build_pipelines(
     # Return list of (path, start_ids).  start_ids is parallel to
     # in_data_nodes.  If no paths found, will return an empty list.
     import sys
+    from genomicode import parselib
     from Betsy import bie3
 
     print "Constructing pipelines that use --input data types."
@@ -552,10 +553,11 @@ def build_pipelines(
             if i in inputs_used:
                 continue
             name = in_data_nodes[i].data.datatype.name
-            print (
+            x = (
                 "%s is not used in any pipelines.  "
                 "Please make sure the proposed pipelines are acceptable and "
                 "remove this input." % name)
+            parselib.print_split(x, prefixn=2)
 
     if not good_paths:
         print "No pipelines found.  Examine network to diagnose."
@@ -1891,6 +1893,6 @@ def main():
 
 
 if __name__ == '__main__':
-    import cProfile as profile
-    profile.runctx("main()", globals(), locals())
-    #main()
+    #import cProfile as profile
+    #profile.runctx("main()", globals(), locals())
+    main()

@@ -10,6 +10,9 @@ YESNO = BDT.YESNO
 PreprocessingReport = DataType(
     "PreprocessingReport",
     AttributeDef(
+        "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
+        help="contents"),
+    AttributeDef(
         "preprocess", BDT.ANY_PREPROCESS, "unknown", "any",
         help="preprocess for normalize report file"),
     AttributeDef(
@@ -149,11 +152,11 @@ all_modules = [
             GeneExpProcessing.IntensityPlot,  # 1
             ArrayPlatforms.BiotinPlot,        # 2
             PcaAnalysis.PcaPlot,              # 3
-            #ArrayPlatforms.ActbPlot,          # 4
-            #PcaAnalysis.PcaPlot,              # 5
-            #ArrayPlatforms.HousekeepingPlot,
-            #ArrayPlatforms.Hyb_barPlot,
-            #ArrayPlatforms.ControlFile
+            ArrayPlatforms.ActbPlot,          # 4
+            PcaAnalysis.PcaPlot,              # 5
+            ArrayPlatforms.HousekeepingPlot,  # 6
+            ArrayPlatforms.Hyb_barPlot,       # 7
+            ArrayPlatforms.ControlFile        # 8
             ],
         PreprocessingReport,
         
@@ -203,38 +206,39 @@ all_modules = [
         Constraint('duplicate_probe', SAME_AS, 0, 3),
         Constraint('group_fc', SAME_AS, 0, 3),
 
-##         # ActbPlot
-##         Constraint("contents", SAME_AS, 0, 4),
-##         Constraint("preprocess", SAME_AS, 0, 4),
+        # ActbPlot
+        Constraint("contents", SAME_AS, 0, 4),
+        Constraint("preprocess", SAME_AS, 0, 4),
         
-##         # PcaPlot (No processing)
-##         Constraint("contents", SAME_AS, 0, 5),
-##         Constraint("preprocess", SAME_AS, 0, 5),
-##         Constraint('quantile_norm', MUST_BE, 'no', 5),
-##         Constraint('combat_norm', MUST_BE, 'no', 5),
-##         Constraint('dwd_norm', MUST_BE, 'no', 5),
-##         Constraint('shiftscale_norm', MUST_BE, 'no', 5),
-##         Constraint('bfrm_norm', MUST_BE, 'no', 5),
-##         Constraint('gene_center', MUST_BE, 'no', 5),
-##         Constraint('gene_normalize', MUST_BE, 'no', 5),
-##         Constraint('unique_genes', MUST_BE, 'no', 5),
-##         Constraint('platform', MUST_BE, 'no', 5),
-##         Constraint('num_features', MUST_BE, 'no', 5),
-##         Constraint('duplicate_probe', MUST_BE, 'no', 5),
-##         Constraint('group_fc', MUST_BE, 'no', 5),
+        # PcaPlot (No processing)
+        Constraint("contents", SAME_AS, 0, 5),
+        Constraint("preprocess", SAME_AS, 0, 5),
+        Constraint('quantile_norm', MUST_BE, "no", 5),
+        Constraint('combat_norm', MUST_BE, "no", 5),
+        Constraint('dwd_norm', MUST_BE, "no", 5),
+        Constraint('shiftscale_norm', MUST_BE, "no", 5),
+        Constraint('bfrm_norm', MUST_BE, "no", 5),
+        Constraint('gene_center', MUST_BE, "no", 5),
+        Constraint('gene_normalize', MUST_BE, "no", 5),
+        Constraint('unique_genes', MUST_BE, "no", 5),
+        Constraint('platform', MUST_BE, "no", 5),
+        Constraint('num_features', MUST_BE, "no", 5),
+        Constraint('duplicate_probe', MUST_BE, "no", 5),
+        Constraint('group_fc', MUST_BE, "no", 5),
 
-##         # HousekeepingPlot
-##         Constraint("contents", SAME_AS, 0, 6),
+        # HousekeepingPlot
+        Constraint("contents", SAME_AS, 0, 6),
 
-##         # Hyb_barPlot
-##         Constraint("contents", SAME_AS, 0, 7),
+        # Hyb_barPlot
+        Constraint("contents", SAME_AS, 0, 7),
 
-##         # ControlFile
-##         Constraint("preprocess", SAME_AS, 0, 8),
-##         Constraint("contents", SAME_AS, 0, 8),
-##         Constraint('format', MUST_BE, 'gct', 8),
-##         Constraint("logged", MUST_BE, 'no', 8),
+        # ControlFile
+        Constraint("preprocess", SAME_AS, 0, 8),
+        Constraint("contents", SAME_AS, 0, 8),
+        Constraint('format', MUST_BE, "gct", 8),
+        Constraint("logged", MUST_BE, "no", 8),
         
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
         Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
         Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0),
         Consequence("combat_norm", SAME_AS_CONSTRAINT, 0),
@@ -276,28 +280,28 @@ all_modules = [
             ],
         BatchEffectReport,
         
-        Constraint("quantile_norm", MUST_BE, 'no', 0),
+        Constraint("quantile_norm", MUST_BE, "no", 0),
         Constraint("quantile_norm", SAME_AS, 0, 1),
-        Constraint("quantile_norm", MUST_BE, 'yes', 2),
+        Constraint("quantile_norm", MUST_BE, "yes", 2),
         Constraint("quantile_norm", SAME_AS, 2, 3),
         
-        Constraint("quantile_norm", MUST_BE, 'yes', 4),
-        Constraint("dwd_norm", MUST_BE, 'yes',4),
+        Constraint("quantile_norm", MUST_BE, "yes", 4),
+        Constraint("dwd_norm", MUST_BE, "yes",4),
         Constraint("quantile_norm", SAME_AS, 4, 5),
         Constraint("dwd_norm", SAME_AS, 4, 5),
         
-        Constraint("quantile_norm", MUST_BE, 'yes',6),
-        Constraint("bfrm_norm", MUST_BE, 'yes',6),
+        Constraint("quantile_norm", MUST_BE, "yes",6),
+        Constraint("bfrm_norm", MUST_BE, "yes",6),
         Constraint("quantile_norm", SAME_AS,6,7),
         Constraint("bfrm_norm", SAME_AS,6,7),
         
-        Constraint("quantile_norm", MUST_BE, 'yes',8),
-        Constraint("shiftscale_norm", MUST_BE, 'yes',8),
+        Constraint("quantile_norm", MUST_BE, "yes",8),
+        Constraint("shiftscale_norm", MUST_BE, "yes",8),
         Constraint("quantile_norm", SAME_AS, 8, 9),
         Constraint("shiftscale_norm", SAME_AS, 8, 9),
         
-        Constraint("quantile_norm", MUST_BE, 'yes', 10),
-        Constraint("combat_norm", MUST_BE, 'yes', 10),
+        Constraint("quantile_norm", MUST_BE, "yes", 10),
+        Constraint("combat_norm", MUST_BE, "yes", 10),
         Constraint("quantile_norm", SAME_AS, 10, 11),
         Constraint("combat_norm", SAME_AS, 10, 11),
         
