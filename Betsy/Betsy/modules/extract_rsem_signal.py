@@ -11,7 +11,7 @@ class Module(AbstractModule):
         from genomicode import jmath
         from genomicode import AnnotationMatrix
         from genomicode import alignlib
-        from Betsy import module_utils as mlib
+        #from Betsy import module_utils as mlib
 
         rsem_path = in_data.identifier
         assert os.path.exists(rsem_path)
@@ -23,10 +23,15 @@ class Module(AbstractModule):
         preprocess = out_attributes.get("preprocess")
         assert preprocess in ["tpm", "fpkm"]
 
-        x = mlib.get_user_option(
-            user_options, "genes_or_isoforms", not_empty=True,
-            allowed_values=["genes", "isoforms"])
-        get_genes = x == "genes"
+        #x = mlib.get_user_option(
+        #    user_options, "genes_or_isoforms", not_empty=True,
+        #    allowed_values=["genes", "isoforms"])
+        #get_genes = x == "genes"
+
+        # Figure out whether to align to genome or transcriptome.
+        x = out_attributes["expression_of"]
+        assert x in ["gene", "isoform"]
+        get_genes = x == "gene"
 
         transcript_header = "transcript_id(s)"
         if not get_genes:

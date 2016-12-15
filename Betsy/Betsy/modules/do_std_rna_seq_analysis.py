@@ -9,14 +9,16 @@ class Module(AbstractModule):
         out_path):
         import os
         from genomicode import filelib
-        bam_node, \
-                  fastqc_summary1_node, fastqc_folder1_node, \
-                  fastqc_summary2_node, fastqc_folder2_node, \
-                  rseqc_node, \
-                  signal1_node, \
-                  aligned_reads_node, \
-                  signal2_node, \
-                  htseq_reads_node = antecedents
+        
+        (bam_node,
+         fastqc_summary1_node, fastqc_folder1_node,
+         fastqc_summary2_node, fastqc_folder2_node,
+         rseqc_node,
+         signal1_node,   # TPM
+         signal2_node,   # TPM, isoform
+         aligned_reads_node,
+         signal3_node,   # count
+         htseq_reads_node) = antecedents
         filelib.safe_mkdir(out_path)
 
         FILES = [
@@ -26,9 +28,10 @@ class Module(AbstractModule):
             (fastqc_summary2_node.identifier, True, "fastqc.trim.xls"),
             (fastqc_folder2_node.identifier, False, "fastqc.trim"),
             (rseqc_node.identifier, False, "RSeQC"),
-            (signal1_node.identifier, True, "expression.tpm"),
+            (signal1_node.identifier, True, "expression.gene.tpm"),
+            (signal2_node.identifier, True, "expression.isoform.tpm"),
             (aligned_reads_node.identifier, True, "aligned.xls"),
-            (signal2_node.identifier, True, "expression.counts"),
+            (signal3_node.identifier, True, "expression.counts"),
             (htseq_reads_node.identifier, True, "mapped.htseq.txt"),
             ]
 
