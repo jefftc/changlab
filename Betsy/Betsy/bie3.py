@@ -3509,7 +3509,6 @@ def _prune_by_most_inputs(network, paths):
     return paths
 
 
-
 def _prune_by_custom_attributes(
     network, custom_attributes, paths, nodeid2parents):
     # Keep only the paths that match the attributes desired by the
