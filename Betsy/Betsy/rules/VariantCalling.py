@@ -96,7 +96,6 @@
 #
 #
 # Modules:
-# XXX CLEAN UP
 # call_variants_mpileup
 # summarize_consensus_mpileup
 # summarize_reads_mpileup
@@ -176,14 +175,6 @@
 #   Indelocator not available anymore.
 
 # TODO:
-# mutect2                       RUNNING
-# merge_somatic_variants_snp
-#
-# merge_somatic_variants_indel
-# call_variants_mutect2   indel
-# merge_variants_indel
-# call_variants_pindel           RUNNING
-# 
 # Add VAFs in normal samples
 
 
@@ -750,6 +741,8 @@ all_modules = [
     ModuleNode(
         "make_full_genome_intervals",
         NGS.ReferenceGenome, IntervalListFile,
+        Constraint("dict_added", MUST_BE, "yes"),
+        Constraint("samtools_indexed", MUST_BE, "yes"),
         ),
 
     ModuleNode(
@@ -822,6 +815,8 @@ all_modules = [
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("aligner", MUST_BE, "bwa_mem", 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
+        # Not sure if these really need to be "yes".
+        Constraint("samtools_indexed", MUST_BE, "yes", 2),
         Consequence("caller", SET_TO, "strelka"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO_ONE_OF, ["snp", "indel"]),
@@ -838,6 +833,8 @@ all_modules = [
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
+        # Not sure if these really need to be "yes".
+        Constraint("samtools_indexed", MUST_BE, "yes", 2),
         Consequence("caller", SET_TO, "somaticsniper"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO, "snp"),
@@ -958,11 +955,13 @@ all_modules = [
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO, 0),
-        #Consequence("caller", SET_TO, "pindel"),
-        #Consequence("vcf_recalibrated", SET_TO, "no"),
-        #Consequence("vartype", SET_TO, "indel"),
+        ##Consequence("caller", SET_TO, "pindel"),
+        ##Consequence("vcf_recalibrated", SET_TO, "no"),
+        ##Consequence("vartype", SET_TO, "indel"),
         # Pindel 0.2.0 wants BWA-generated BAM files.
         Constraint("aligner", MUST_BE, "bwa_mem", 0),
+        Constraint("aligner", SAME_AS, 0, 2),
+        Constraint("aligner", SAME_AS, 0, 3),
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("samtools_indexed", MUST_BE, "yes", 1),
         help="Use pindel to call variants.",
@@ -973,8 +972,9 @@ all_modules = [
         Consequence("caller", SET_TO, "pindel"),
         Consequence("vcf_recalibrated", SET_TO, "no"),
         Consequence("vartype", SET_TO, "indel"),
-        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS),
+        Constraint("aligner", CAN_BE_ANY_OF, NGS.ALIGNERS, 0),
         Consequence("aligner", SAME_AS_CONSTRAINT),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
         help="Convert the pindel results to VCF.",
         ),
 
@@ -1459,6 +1459,9 @@ all_modules = [
         OptionDef("vcf_recal_omni"),
         Constraint("vcf_recalibrated", MUST_BE, "no", 0),
         Constraint("vartype", CAN_BE_ANY_OF, ["all", "snp"], 0),
+        # Not sure about these ReferenceGenome options.
+        Constraint("dict_added", MUST_BE, "yes", 1),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Consequence("vartype", SET_TO, "snp"),
         Constraint("somatic", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("somatic", SAME_AS_CONSTRAINT),
@@ -1475,6 +1478,9 @@ all_modules = [
         Constraint("caller", SAME_AS, 0, 2),
         Consequence("caller", SAME_AS_CONSTRAINT),
         Constraint("vartype", CAN_BE_ANY_OF, ["all", "snp"], 0),
+        # Not sure about these ReferenceGenome options.
+        Constraint("dict_added", MUST_BE, "yes", 1),
+        Constraint("samtools_indexed", MUST_BE, "yes", 1),
         Constraint("vartype", MUST_BE, "snp", 2),
         Consequence("vartype", SAME_AS_CONSTRAINT, 2),
         Constraint("somatic", CAN_BE_ANY_OF, YESNO, 0),

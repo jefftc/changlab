@@ -33,7 +33,7 @@ class Module(AbstractModule):
             ]
         cmd = " ".join(map(str, cmd))
         parallel.sshell(cmd)
-        metadata["command"] = cmd
+        metadata["commands"] = [cmd]
         
         outputfile = outfile + '.nrm'
         filelib.assert_exists_nz(outputfile)

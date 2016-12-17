@@ -158,6 +158,8 @@ ReferenceGenome = DataType(
     #    "assembly", default="genome",
     #    help="Optional name for the genome assembly, e.g. hg19",
     #    ),
+
+    # Process attributes in this order.
     AttributeDef(
         "dict_added", ["unknown", "no", "yes"], "unknown", "unknown"),
     AttributeDef(
@@ -458,11 +460,23 @@ DepthOfCoverage = DataType(
 
 InsertSizeMetrics = DataType(
     "InsertSizeMetrics",
+    AttributeDef(
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
+    #AttributeDef(
+    #    "indel_realigned", ["yes", "no"], "no", "no",
+    #    help="realigned or not"),
     help="Look at insert sizes of DNA-Seq.  Saves a directory of files.",
     )
 
 AlignmentSummaryMetrics = DataType(
     "AlignmentSummaryMetrics",
+    AttributeDef(
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
+    #AttributeDef(
+    #    "indel_realigned", ["yes", "no"], "no", "no",
+    #    help="realigned or not"),
     help="Picard CollectAlignmentSummaryMetrics.  Saves a directory of files.",
     )
 
@@ -685,6 +699,8 @@ all_modules = [
     ModuleNode(
         "is_reference_samtools_indexed",
         ReferenceGenome, ReferenceGenome,
+        #Constraint("dict_added", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("dict_added", SAME_AS_CONSTRAINT),
         Constraint("samtools_indexed", MUST_BE, "unknown"),
         Consequence("samtools_indexed", BASED_ON_DATA, YESNO),
         ),
@@ -699,6 +715,10 @@ all_modules = [
     ModuleNode(
         "is_reference_bowtie1_indexed",
         ReferenceGenome, ReferenceGenome,
+        #Constraint("dict_added", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("dict_added", SAME_AS_CONSTRAINT),
+        #Constraint("samtools_indexed", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("samtools_indexed", SAME_AS_CONSTRAINT),
         Constraint("bowtie1_indexed", MUST_BE, "unknown"),
         Consequence("bowtie1_indexed", BASED_ON_DATA, YESNO),
         ),
@@ -748,6 +768,12 @@ all_modules = [
     ModuleNode(
         "is_reference_bowtie2_indexed",
         ReferenceGenome, ReferenceGenome,
+        #Constraint("dict_added", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("dict_added", SAME_AS_CONSTRAINT),
+        #Constraint("samtools_indexed", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("samtools_indexed", SAME_AS_CONSTRAINT),
+        #Constraint("bowtie1_indexed", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("bowtie1_indexed", SAME_AS_CONSTRAINT),
         Constraint("bowtie2_indexed", MUST_BE, "unknown"),
         Consequence("bowtie2_indexed", BASED_ON_DATA, YESNO),
         ),
@@ -808,6 +834,14 @@ all_modules = [
     ModuleNode(
         "is_reference_bwa_indexed",
         ReferenceGenome, ReferenceGenome,
+        #Constraint("dict_added", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("dict_added", SAME_AS_CONSTRAINT),
+        #Constraint("samtools_indexed", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("samtools_indexed", SAME_AS_CONSTRAINT),
+        #Constraint("bowtie1_indexed", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("bowtie1_indexed", SAME_AS_CONSTRAINT),
+        #Constraint("bowtie2_indexed", CAN_BE_ANY_OF, ["yes", "no"]),
+        #Consequence("bowtie2_indexed", SAME_AS_CONSTRAINT),
         Constraint("bwa_indexed", MUST_BE, "unknown"),
         Consequence("bwa_indexed", BASED_ON_DATA, YESNO),
         ),
@@ -1322,20 +1356,26 @@ all_modules = [
         "calculate_insert_size_metrics",
         BamFolder, InsertSizeMetrics,
         Constraint("sorted", MUST_BE, "coordinate"),
-        Constraint("indexed", CAN_BE_ANY_OF, YESNO),
+        Constraint("indexed", MUST_BE, "yes"),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO),
+        #Constraint("indel_realigned", CAN_BE_ANY_OF, YESNO),
+        #Consequence("indel_realigned", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         ),
     
     ModuleNode(
         "calculate_alignment_summary_metrics",
         [BamFolder, ReferenceGenome], AlignmentSummaryMetrics,
         Constraint("sorted", MUST_BE, "coordinate"),
-        Constraint("indexed", CAN_BE_ANY_OF, YESNO),
+        Constraint("indexed", MUST_BE, "yes"),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO),
+        #Constraint("indel_realigned", CAN_BE_ANY_OF, YESNO),
+        #Consequence("indel_realigned", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
+        Consequence("aligner", SAME_AS_CONSTRAINT),
         ),
 
     ## ModuleNode(
