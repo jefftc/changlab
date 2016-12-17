@@ -219,7 +219,7 @@ def prod_list(X):
     return total
 
 def prod(X, byrow=1):
-    return _dispatch(X, None, sum_list, None)
+    return _dispatch(X, None, prod_list, None)
 
 
 def mean_list(X):

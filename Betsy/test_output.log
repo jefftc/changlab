@@ -319,15 +319,14 @@ All --input data found in network.
 Constructing pipelines that use --input data types.
 Found 2 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
-The following --mattr options were provided, but may not be needed:
-  adapters_fasta
 Pruning redundant pipelines.
-All pipelines pruned.  This can happen if:
-  1.  There is a conflicting data attribute in the pipeline.
-  2.  A --mattr option is missing.
-  3.  There is a bug in the network generation.
-  4.  There is a bug in the pipeline pruning.
-Please review the network, attributes, and --mattr options.
+No redundant pipelines found.  2 final pipelines.
+Making sure all input files provided.
+No file given: FastqFolder.
+No file given: SampleGroupFile.
+No file given: STARReferenceGenome.
+No file given: RSEMReferenceGenome.
+No file given: GTFGeneModel.
 Plotting (69 node) network to test16.png.
 Starting rule engine.
 Checking parameters.
@@ -364,17 +363,19 @@ SimpleVariantMatrix
   with_coverage=no
   with_gxp=no
   with_rna_coverage=no
-Made a network with 154 nodes.
+Made a network with 160 nodes.
 Writing network in json format: test18.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
 Found 6 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
+Missing --mattr: call_variants_mutect2 requires attribute "mutect_cosmic_vcf".
 Missing --mattr: call_variants_mutect requires attribute "mutect_cosmic_vcf".
-Missing --mattr: call_variants_mutect requires attribute "mutect_dbsnp_vcf".
 Missing --mattr: call_variants_muse requires attribute "muse_dbsnp_vcf".
-Plotting (154 node) network to test18.png.
+Missing --mattr: call_variants_mutect2 requires attribute "mutect_dbsnp_vcf".
+Missing --mattr: call_variants_mutect requires attribute "mutect_dbsnp_vcf".
+Plotting (160 node) network to test18.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
@@ -387,7 +388,7 @@ SimpleVariantMatrix
   with_coverage=yes
   with_gxp=no
   with_rna_coverage=no
-Made a network with 201 nodes.
+Made a network with 207 nodes.
 Writing network in json format: test19.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -395,13 +396,15 @@ Constructing pipelines that use --input data types.
 Found 6 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Missing --mattr: call_variants_muse requires attribute "wgs_or_wes".
+Missing --mattr: call_variants_mutect2 requires attribute "mutect_cosmic_vcf".
 Missing --mattr: call_variants_mutect requires attribute "mutect_cosmic_vcf".
 Missing --mattr: annotate_simplevariantmatrix requires attribute "annovar_buildver".
 Missing --mattr: call_variants_muse requires attribute "muse_dbsnp_vcf".
 Missing --mattr: add_cancer_genes_to_simplevariantmatrix requires attribute "cancer_genes_file".
 Missing --mattr: filter_simplevariantfile requires attribute "wgs_or_wes".
+Missing --mattr: call_variants_mutect2 requires attribute "mutect_dbsnp_vcf".
 Missing --mattr: call_variants_mutect requires attribute "mutect_dbsnp_vcf".
-Plotting (201 node) network to test19.png.
+Plotting (207 node) network to test19.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
@@ -414,7 +417,7 @@ SimpleVariantMatrix
   with_coverage=yes
   with_gxp=yes
   with_rna_coverage=yes
-Made a network with 302 nodes.
+Made a network with 308 nodes.
 Writing network in json format: test20.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -429,7 +432,7 @@ No file given: BamFolder.
 No file given: ReferenceGenome.
 No file given: NormalCancerFile.
 No file given: UnprocessedSignalFile.
-Plotting (302 node) network to test20.png.
+Plotting (308 node) network to test20.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
@@ -442,21 +445,16 @@ SimpleVariantMatrix
   with_coverage=yes
   with_gxp=yes
   with_rna_coverage=no
-Made a network with 213 nodes.
+Made a network with 233 nodes.
 Writing network in json format: test21.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
-Found 8 possible pipelines.
+Found 24 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
-Pruning redundant pipelines.
-No redundant pipelines found.  8 final pipelines.
-Making sure all input files provided.
-No file given: BamFolder.
-No file given: NormalCancerFile.
-No file given: ReferenceGenome.
-No file given: UnprocessedSignalFile.
-Plotting (213 node) network to test21.png.
+Missing --mattr: call_variants_mutect2 requires attribute "mutect_cosmic_vcf".
+Missing --mattr: call_variants_mutect2 requires attribute "mutect_dbsnp_vcf".
+Plotting (233 node) network to test21.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
@@ -501,3 +499,34 @@ Ready to go!  Will run the analysis using a maximum of 4 cores.
 Please review the network to make sure the analysis is correct.
 Add --run when ready to run the analysis.
 Plotting (163 node) network to test23.png.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+PreprocessingReport
+  annotate=yes
+  bfrm_norm=no
+  combat_norm=no
+  contents=unspecified
+  duplicate_probe=no
+  dwd_norm=no
+  gene_center=no
+  gene_normalize=no
+  group_fc=no
+  num_features=no
+  platform=no
+  preprocess=illumina
+  quantile_norm=no
+  shiftscale_norm=no
+  unique_genes=no
+Made a network with 79 nodes.
+Writing network in json format: test24.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 2 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  2 final pipelines.
+Making sure all input files provided.
+No file given: ExpressionFiles.
+Plotting (79 node) network to test24.png.

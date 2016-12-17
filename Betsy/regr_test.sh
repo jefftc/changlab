@@ -304,3 +304,8 @@ betsy_run.py --network_png test23.png --network_json test23.txt \
   --input GEOSeries \
   --output Heatmap \
   --mattr GSEID=GSE14934 >& test23.log
+# Preprocess Illumina microarray data.
+betsy_run.py --network_png test24.png --network_json test24.txt \
+  --input ExpressionFiles \
+  --output PreprocessingReport \
+  --dattr PreprocessingReport.preprocess=illumina >& test24.log

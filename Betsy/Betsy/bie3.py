@@ -101,9 +101,8 @@ debug_print
 #
 # _find_same_data          Find a DataNode that is an exact match.
 # _find_compat_data        Find a DataNode that is compatible.
-#                          WAS _find_start_node
 # _score_same_data
-# _score_compat_data       WAS _score_start_nodes.
+# _score_compat_data
 # _is_data_same
 # _is_data_compatible
 # _is_datas_compatible
@@ -125,9 +124,9 @@ debug_print
 # _get_attribute_type
 # _assign_case_by_type
 #
-# _get_parents_of          WAS _backchain_to_ids
+# _get_parents_of
 # _get_children_of
-# _make_parents_dict       WAS _make_backchain_dict
+# _make_parents_dict
 # _make_ancestor_dict
 # _make_descendent_dict
 # _can_reach_by_bc
@@ -244,7 +243,9 @@ CONST2STR = {
 DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = False
 #DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True    # DON'T DO THIS.
 
+# Set some limits on the backchaining algorithm.
 MAX_NETWORK_SIZE = 1024 * 4
+MAX_BACKCHAIN_NODES = 1024 * 16
 
 
 class AttributeDef:
@@ -1172,14 +1173,16 @@ def _calc_indexes_after_deletion(num_indexes, indexes_to_delete):
 class Network(object):
     def __init__(self, nodes, transitions):
         # nodes should be a list of DataNode or ModuleNode objects.
-        # DataNode transition to ModuleNodes, and ModuleNodes
+        # DataNodes transition to ModuleNodes, and ModuleNodes
         # transition to DataNode.
+        # transitions is a dict of node_id -> set of node_ids
 
         # Make sure nodes are DataNode or ModuleNode objects.
         for n in nodes:
             assert isinstance(n, DataNode) or isinstance(n, ModuleNode)
         # Make sure transitions point to the right types of objects.
         for node_id, next_ids in transitions.iteritems():
+            assert isinstance(next_ids, set)
             assert node_id >= 0 and node_id < len(nodes)
             for nid in next_ids:
                 assert nid >= 0 and nid < len(nodes)
@@ -1230,7 +1233,7 @@ class Network(object):
             #    if next_ids[i] > node_id:
             #        next_ids[i] = next_ids[i] - 1
             #transitions[nid] = next_ids
-            transitions[nid] = new_next_ids
+            transitions[nid] = set(new_next_ids)
         # Optimization: create a new network, bypassing __init__ and
         # all its checks.
         network = Network.__new__(Network)
@@ -1257,7 +1260,7 @@ class Network(object):
             next_ids = [x for x in next_ids if x not in node_ids]
             new_nid = I_old2new[nid]
             new_next_ids = [I_old2new[x] for x in next_ids]
-            transitions[new_nid] = new_next_ids
+            transitions[new_nid] = set(new_next_ids)
         #network = Network(nodes, transitions)
         # Optimization: create a new network, bypassing __init__ and
         # all its checks.
@@ -1306,16 +1309,21 @@ class Network(object):
         for prev_id in prev_ids:
             x = transitions[prev_id]
             if node_id not in x:
-                x = x + [node_id]
+                #x = x + [node_id]
+                x = x.union([node_id])
+                #x.update([node_id])
             transitions[prev_id] = x
 
         # Make the first node point to all the next_nodes of the other
         # node_ids.
         nid0 = node_ids[0]
         for nidi in node_ids[1:]:
-            x = transitions.get(nid0, []) + transitions.get(nidi, [])
-            x = sorted({}.fromkeys(x))
-            transitions[nid0] = x
+            #x = transitions.get(nid0, []) + transitions.get(nidi, [])
+            #x = sorted({}.fromkeys(x))
+            #transitions[nid0] = x
+            x1 = transitions.get(nid0, set())
+            x2 = transitions.get(nid1, set())
+            transitions[nid0] = x1.union(x2)
 
         # Optimization: create a new network, bypassing __init__ and
         # all its checks.
@@ -1366,18 +1374,20 @@ class Network(object):
             for prev_id in prev_ids:
                 x = transitions[prev_id]
                 if tid not in x:
-                    x = x + [tid]
+                    x.update([tid])
+                #    x = x + [tid]
                 transitions[prev_id] = x
 
         # Transitions that start from the source nodes should now
         # start from the target.
         for node_ids in all_node_ids:
             tid = node_ids[0]
-            next_ids = transitions.get(tid, [])
+            next_ids = transitions.get(tid, set())
             for sid in node_ids[1:]:
-                x = transitions.get(sid, [])
-                next_ids = next_ids + x  # don't change original list
-            next_ids = sorted({}.fromkeys(next_ids))
+                x = transitions.get(sid, set())
+                next_ids.update(x)
+                #next_ids = next_ids + x  # don't change original list
+            #next_ids = sorted({}.fromkeys(next_ids))
             transitions[tid] = next_ids
 
         # Keep the first node, and delete the rest.
@@ -1523,8 +1533,10 @@ def _init_network(moduledb, out_data, custom_attributes):
                 network.nodes.append(m)
                 m_id = len(network.nodes) - 1
                 stack.append(m_id)
-                network.transitions[m_id] = network.transitions.get(m_id, [])
-                network.transitions[m_id].append(node_id)
+                x = network.transitions.get(m_id, set())
+                network.transitions[m_id] = x.union([node_id])
+                #network.transitions[m_id] = network.transitions.get(m_id, [])
+                #network.transitions[m_id].append(node_id)
         elif isinstance(node, ModuleNode):
             # Networks generated may not be identical.  Nodes can be
             # added onto the stack in different orders, leading to
@@ -1542,12 +1554,14 @@ def _init_network(moduledb, out_data, custom_attributes):
                     network.nodes.append(d)
                     d_id = len(network.nodes) - 1
                     dt = d.datatype.name
-                    s = dt2nodeids.get(dt, set())
-                    s = s.union([d_id])
-                    dt2nodeids[dt] = s
+                    x = dt2nodeids.get(dt, set())
+                    x = x.union([d_id])
+                    dt2nodeids[dt] = x
                 stack.append(d_id)
-                network.transitions[d_id] = network.transitions.get(d_id, [])
-                network.transitions[d_id].append(node_id)
+                x = network.transitions.get(d_id, set())
+                network.transitions[d_id] = x.union([node_id])
+                #network.transitions[d_id] = network.transitions.get(d_id, [])
+                #network.transitions[d_id].append(node_id)
         else:
             raise AssertionError, "Unknown node type: %s" % node
 
@@ -1555,9 +1569,9 @@ def _init_network(moduledb, out_data, custom_attributes):
         #plot_network_gv("cycle-%02d.png" % nit, network, verbose=True)
         #_make_ancestor_dict(network)
 
-    # Remove the duplicates from transitions.
-    for nid, next_ids in network.transitions.iteritems():
-        network.transitions[nid] = _uniq_intlist(next_ids)
+    ## Remove the duplicates from transitions.
+    #for nid, next_ids in network.transitions.iteritems():
+    #    network.transitions[nid] = _uniq_intlist(next_ids)
 
     # Check for cycles here.  Will not be able to make ancestor dict
     # if there is a cycle.
@@ -1605,10 +1619,12 @@ def _split_network(network):
             nid = len(network.nodes)-1
             # Make sure this points to all the children of the
             # previous node.
-            network.transitions[nid] = network.transitions[node_id][:]
+            #network.transitions[nid] = network.transitions[node_id][:]
+            network.transitions[nid] = network.transitions[node_id].copy()
             # Make sure all the parent nodes point to this one.
             for pid in nodeid2parents.get(node_id, []):
-                network.transitions[pid].append(nid)
+                network.transitions[pid].update([nid])
+                #network.transitions[pid].append(nid)
         # Mark the old node for deletion.
         to_delete.append(node_id)
     network = network.delete_nodes(to_delete)
@@ -1699,7 +1715,9 @@ def _complete_network(network, custom_attributes):
             if module_id in network.transitions[id_]:
                 continue
             # Add id_ -> module_id.
-            network.transitions[id_].append(module_id)
+            network.transitions[id_].update([module_id])
+            #network.transitions[id_].append(module_id)
+            
             added.append(id_)
             debug_print(
                 DEBUG_BACKCHAIN,
@@ -1913,11 +1931,12 @@ class _OptimizeNoCycles:
         node_id, next_id = bad_transition
 
         transitions = network.transitions.copy()
-        x = transitions.get(node_id, [])
+        x = transitions.get(node_id, set())
         assert next_id in x
-        i = x.index(next_id)
-        assert i >= 0
-        x = x[:i] + x[i + 1:]
+        x = x.difference([next_id])
+        #i = x.index(next_id)
+        #assert i >= 0
+        #x = x[:i] + x[i+1:]
         transitions[node_id] = x
 
         return Network(network.nodes, transitions)
@@ -1951,11 +1970,12 @@ class _OptimizeNoInvalidOutputs:
         #network = copy.deepcopy(network)
         # Optimization: change network in place.
         for node_id, next_id in bad_transitions:
-            x = network.transitions.get(node_id, [])
+            x = network.transitions.get(node_id, set())
             assert next_id in x
-            i = x.index(next_id)
-            assert i >= 0
-            x.pop(i)
+            x = x.difference([next_id])
+            #i = x.index(next_id)
+            #assert i >= 0
+            #x.pop(i)
             network.transitions[node_id] = x
         return network
 
@@ -2032,14 +2052,14 @@ class _OptimizeNoDuplicateModules:
         for node_ids in name2nodeids.itervalues():
             for i in range(len(node_ids)-1):
                 node_id1 = node_ids[i]
-                children1 = network.transitions.get(node_id1, [])
-                parents1 = node2parents.get(node_id1, [])
+                children1 = network.transitions.get(node_id1, set())
+                parents1 = node2parents.get(node_id1, set())
                 children1_s = None
                 parents1_s = None
                 for j in range(i+1, len(node_ids)):
                     node_id2 = node_ids[j]
-                    children2 = network.transitions.get(node_id2, [])
-                    parents2 = node2parents.get(node_id2, [])
+                    children2 = network.transitions.get(node_id2, set())
+                    parents2 = node2parents.get(node_id2, set())
                     # The vast majority of the time, there is just one
                     # child and one parent.  There is never no child
                     # or parent.
@@ -2049,8 +2069,10 @@ class _OptimizeNoDuplicateModules:
                             continue
                     elif len(children1) == len(children2):
                         if children1_s is None:
-                            children1_s = sorted(children1)
-                        if children1_s == sorted(children2):
+                            #children1_s = sorted(children1)
+                            children1_s = children1
+                        #if children1_s == sorted(children2):
+                        if children1_s == children2:
                             pairs[(node_id1, node_id2)] = 1
                             continue
 
@@ -2060,8 +2082,10 @@ class _OptimizeNoDuplicateModules:
                             continue
                     elif len(parents1) == len(parents2):
                         if parents1_s is None:
-                            parents1_s = sorted(parents1)
-                        if parents1_s == sorted(parents2):
+                            #parents1_s = sorted(parents1)
+                            parents1_s = parents1
+                        #if parents1_s == sorted(parents2):
+                        if parents1_s == parents2:
                             pairs[(node_id1, node_id2)] = 1
                             continue
 
@@ -2504,7 +2528,7 @@ class _OptimizeMergeData1:
             # change next_ids in place.
             for sid in node_ids[1:]:
                 if sid in next_ids:
-                    next_ids.append(tid)
+                    next_ids.update([tid])
                     break
         return network
 
@@ -2521,7 +2545,8 @@ class _OptimizeMergeData1:
         for node_id, next_ids in network.transitions.iteritems():
             if node_id2 in next_ids and node_id1 not in next_ids:
                 # Change next_ids in place.
-                next_ids.append(node_id1)
+                #next_ids.append(node_id1)
+                next_ids.update([node_id1])
         # They share the same children already.  No need to add.
         return network.delete_node(node_id2)
 
@@ -3557,7 +3582,6 @@ def _prune_by_custom_attributes(
     nodeid2parents = _make_parents_dict(network)
     descendents = _make_descendent_dict(network)
 
-
     # Step 1: Start with a list of all data node IDs.
     x = path_node_ids
     x = [x for x in x if isinstance(network.nodes[x], DataNode)]
@@ -3578,10 +3602,11 @@ def _prune_by_custom_attributes(
 
     # Step 3: Make a list of the module IDs that these data nodes can
     # go through.
-    module_ids = []
+    module_ids = set()
     for node_id in data_node_ids:
-        x = network.transitions.get(node_id, [])
-        module_ids.extend(x)
+        x = network.transitions.get(node_id, set())
+        module_ids.update(x)
+        #module_ids.extend(x)
     module_ids = [x for x in module_ids if x in path_node_ids]
     module_ids = set(module_ids)
     debug_print(
@@ -4657,7 +4682,7 @@ def _does_path_go_through(network, start_id, good_ids, intermediate_ids):
         node_id = stack.pop(0)
         if node_id in intermediate_ids:
             continue
-        x = network.transitions.get(node_id, [])
+        x = network.transitions.get(node_id, set())
         next_ids = [x for x in x if x in good_ids]
         if not next_ids:
             # Goes to end of network.  Did not encounter intermediate_ids.
@@ -4711,7 +4736,7 @@ def _prune_parallel_pipelines(network, paths, nodeid2parents):
     for node_id in range(len(network.nodes)):
         if not isinstance(network.nodes[node_id], ModuleNode):
             continue
-        x = network.transitions.get(node_id, [])
+        x = network.transitions.get(node_id, set())
         if len(x) == 1:
             modules_with_one_child.append(node_id)
     modules_with_one_child = frozenset(modules_with_one_child)
@@ -4749,7 +4774,7 @@ def _prune_parallel_pipelines(network, paths, nodeid2parents):
     for p in paths:
         for nid, nextids in p.transitions.iteritems():
             if nid not in transitions:
-                transitions[nid] = []
+                transitions[nid] = set()
             x = nextids.union(transitions[nid])
             transitions[nid] = x
     clusters = []
@@ -4765,17 +4790,19 @@ def _prune_parallel_pipelines(network, paths, nodeid2parents):
                 #merge = False
                 # If any of clusters[i] transitions to clusters[j],
                 # then merge.
-                trans1 = []
+                trans1 = set()
                 for nid1 in clusters[i]:
-                    trans1.extend(transitions.get(nid1, []))
-                trans2 = []
+                    #trans1.extend(transitions.get(nid1, []))
+                    trans1.update(transitions.get(nid1, set()))
+                trans2 = set()
                 for nid2 in clusters[j]:
-                    trans2.extend(transitions.get(nid2, []))
+                    #trans2.extend(transitions.get(nid2, []))
+                    trans2.update(transitions.get(nid2, set()))
 
                 # If any of clusters[i] transitions to clusters[j],
                 # then merge.
-                if set(trans1).intersection(clusters[j]) or \
-                   set(trans2).intersection(clusters[i]):
+                if trans1.intersection(clusters[j]) or \
+                   trans2.intersection(clusters[i]):
                     clusters[i] = clusters[i] + clusters[j]
                     del clusters[j]
                     changed = True
@@ -4857,9 +4884,9 @@ def _is_parallel_pipeline1(network, path_1, path_2, nodeid2parents):
         return False
     if not isinstance(network.nodes[data_id_2], DataNode):
         return False
-    if data_id_1 not in network.transitions.get(module_id_1, []):
+    if data_id_1 not in network.transitions.get(module_id_1, set()):
         return False
-    if data_id_2 not in network.transitions.get(module_id_2, []):
+    if data_id_2 not in network.transitions.get(module_id_2, set()):
         return False
     # The module nodes have the same parent.
     parent_ids_1 = nodeid2parents.get(module_id_1, [])
@@ -4868,8 +4895,8 @@ def _is_parallel_pipeline1(network, path_1, path_2, nodeid2parents):
     if not common_ids:
         return False
     # The data nodes have the same child.
-    child_ids_1 = network.transitions.get(data_id_1, [])
-    child_ids_2 = network.transitions.get(data_id_2, [])
+    child_ids_1 = network.transitions.get(data_id_1, set())
+    child_ids_2 = network.transitions.get(data_id_2, set())
     common_ids = [x for x in child_ids_1 if x in child_ids_2]
     if not common_ids:
         return False
@@ -4945,18 +4972,18 @@ def _is_parallel_pipeline2(network, path_1, path_2, nodeid2parents):
         return False
 
     # Make sure the connections are correct.
-    if data_id_1 not in path_1.transitions.get(top_id_1, []):
+    if data_id_1 not in path_1.transitions.get(top_id_1, set()):
         return False
-    if bottom_id_1 not in path_1.transitions.get(data_id_1, []):
+    if bottom_id_1 not in path_1.transitions.get(data_id_1, set()):
         return False
-    if data_id_2 not in path_2.transitions.get(top_id_2, []):
+    if data_id_2 not in path_2.transitions.get(top_id_2, set()):
         return False
-    if bottom_id_2 not in path_2.transitions.get(data_id_2, []):
+    if bottom_id_2 not in path_2.transitions.get(data_id_2, set()):
         return False
 
     # The top nodes have the same parent.
-    parent_ids_1 = nodeid2parents.get(top_id_1, [])
-    parent_ids_2 = nodeid2parents.get(top_id_2, [])
+    parent_ids_1 = nodeid2parents.get(top_id_1, set())
+    parent_ids_2 = nodeid2parents.get(top_id_2, set())
     x = [x for x in parent_ids_1 if x in parent_ids_2]
     x = [x for x in x if x in path_1.node_ids and x in path_2.node_ids]
     common_ids = x
@@ -4964,8 +4991,8 @@ def _is_parallel_pipeline2(network, path_1, path_2, nodeid2parents):
         return False
 
     # The bottom nodes have the same child.
-    child_ids_1 = network.transitions.get(bottom_id_1, [])
-    child_ids_2 = network.transitions.get(bottom_id_2, [])
+    child_ids_1 = network.transitions.get(bottom_id_1, set())
+    child_ids_2 = network.transitions.get(bottom_id_2, set())
     x = [x for x in child_ids_1 if x in child_ids_2]
     x = [x for x in x if x in path_1.node_ids and x in path_2.node_ids]
     common_ids = x
@@ -5226,7 +5253,7 @@ class PathSubset:
         children = {}
         bottom_node_ids = []
         for node_id in self.sub_node_ids:
-            x = self.path_transitions.get(node_id, [])
+            x = self.path_transitions.get(node_id, set())
             x = [x for x in x if x in self.sub_node_ids]
             if x:
                 children[node_id] = x
@@ -5237,7 +5264,7 @@ class PathSubset:
     def _calc_path_parents(self):
         pars = {}
         for node_id in self.sub_node_ids:
-            x = self._nodeid2parents.get(node_id, [])
+            x = self._nodeid2parents.get(node_id, set())
             x = [x for x in x if x not in self.sub_node_ids]
             if x:
                 pars[node_id] = x
@@ -5245,7 +5272,7 @@ class PathSubset:
     def _calc_path_children(self):
         pars = {}
         for node_id in self.sub_node_ids:
-            x = self.path_transitions.get(node_id, [])
+            x = self.path_transitions.get(node_id, set())
             x = [x for x in x if x not in self.sub_node_ids]
             if x:
                 pars[node_id] = x
@@ -5261,7 +5288,7 @@ class PathSubset:
     def _calc_parents_of_top(self):
         parents_of_top = {}
         for node_id in self.top_node_ids:
-            x = [x for x in self._nodeid2parents.get(node_id, [])]
+            x = [x for x in self._nodeid2parents.get(node_id, set())]
             # Is this right?
             x = [x for x in x if x in self.path_node_ids]
             for x in x:
@@ -5270,7 +5297,7 @@ class PathSubset:
     def _calc_children_of_bottom(self):
         children_of_bottom = {}
         for node_id in self.bottom_node_ids:
-            x = [x for x in self.path_transitions.get(node_id, [])]
+            x = [x for x in self.path_transitions.get(node_id, set())]
             x = [x for x in x if x in self.path_node_ids]
             for x in x:
                 children_of_bottom[x] = 1
@@ -5292,7 +5319,7 @@ class PathSubset:
                 continue
 
             # Find the values of the attributes in the children.
-            x = self.path_transitions.get(node_id, [])
+            x = self.path_transitions.get(node_id, set())
             # Is this necessary?
             child_ids = [x for x in x if x in self.path_node_ids]
             for name in attr_names:
@@ -5571,7 +5598,7 @@ def print_network(network, outhandle=None):
     print >>outhandle
 
     for i in sorted(network.transitions):
-        x = [i, "->"] + network.transitions[i]
+        x = [i, "->"] + sorted(network.transitions[i])
         print >>outhandle, "\t".join(map(str, x))
 
 
@@ -5748,7 +5775,7 @@ def plot_network_gv(
     for node_id, next_ids in network.transitions.iteritems():
         if node_id not in show_node_ids:
             continue
-        for next_id in next_ids:
+        for next_id in sorted(next_ids):
             if next_id not in show_node_ids:
                 continue
             edge2attr = {}
@@ -6364,7 +6391,8 @@ def _has_descendent_of_datatype(network, node_id, datatype_name):
             if isinstance(node, DataNode) and \
                    node.datatype.name == datatype_name:
                 return True
-        stack.extend(network.transitions.get(nid, []))
+        x = network.transitions.get(nid, [])
+        stack.extend(list(x))
     return False
 
 
@@ -6379,6 +6407,7 @@ def _bc_to_input_ids(
     # all_input_ids and all_output_ids can be used to restrict the
     # search to specific input or output IDs.
     import itertools
+    from genomicode import jmath
 
     if not nodeid2parents:
         nodeid2parents = _make_parents_dict(network)
@@ -6386,7 +6415,7 @@ def _bc_to_input_ids(
     if all_input_ids is None:
         all_input_ids = nodeid2parents[module_id]
     if all_output_ids is None:
-        all_output_ids = network.transitions.get(module_id, [])
+        all_output_ids = network.transitions.get(module_id, set())
 
     # Optimization: If there is only 1 input and 1 output, assume it's
     # valid and don't check again.
@@ -6419,6 +6448,10 @@ def _bc_to_input_ids(
                 network, module_id, i, network.nodes[x], custom_attributes)]
             args[i] = x
 
+    l = [len(x) for x in args]
+    total = jmath.prod(l)
+    assert total < MAX_BACKCHAIN_NODES, "Too many possible inputs [%d]" % total
+
     valid = []
     # This doesn't work.  The same module can have multiple inputs and
     # outputs.
@@ -6441,14 +6474,16 @@ def _bc_to_input_ids(
             continue
 
         # Actually, duplicated IDs are OK.  Some modules may accept
-        # the same data type twice.  Usually, this is a bug in the
-        # rules, but we should allow it.
-        # Why allow it?
+        # the same data type twice.
+        # Example: the preprocessing report for microarray analysis
+        # compares normalized with normalized gene expression data.
+        # If the user chooses not to normalize the data, the module
+        # will end up with two of the same unnormalized antecedents.
 
         # No duplicated IDs.
-        x = {}.fromkeys(input_ids)
-        if len(x) != len(input_ids):
-            continue
+        #x = {}.fromkeys(input_ids)
+        #if len(x) != len(input_ids):
+        #    continue
 
         # Make sure the inputs are compatible with the module.
         input_datas = [network.nodes[x] for x in input_ids]
@@ -6727,8 +6762,9 @@ def _fc_to_output_ids(
         in_datas = [network.nodes[x] for x in in_data_ids]
         output_data_ids = network.transitions[module_id]
         if all_output_ids is not None:
-            output_data_ids = [
-                x for x in output_data_ids if x in all_output_ids]
+            output_data_ids = output_data_ids.intersection(all_output_ids)
+            #output_data_ids = [
+            #    x for x in output_data_ids if x in all_output_ids]
         # output_datas should be atomic.
         output_datas = _fc_to_outputs(network.nodes[module_id], in_datas)
         for out_data_id in output_data_ids:
@@ -6850,10 +6886,18 @@ def _is_valid_input_i(
 
     out_data_ids = network.transitions.get(module_id, [])
     for out_data_id in out_data_ids:
+        # Make the inputs atomic myself.  Otherwise, will have
+        # combinatorial explosion of duplicate inputs.
         combos = _bc_to_inputs(
-            network, module_id, out_data_id, custom_attributes)
+            network, module_id, out_data_id, custom_attributes,
+            make_atomic_inputs=False)
         nodes_bc = [x[input_num] for x in combos]
-        if _is_atomic_datas_compatible(atomic_in_data, nodes_bc):
+        # Now make nodes_bc atomic.
+        atomic_nodes_bc = []
+        for x in nodes_bc:
+            x = _make_data_node_atomic(x)
+            atomic_nodes_bc.extend(x)
+        if _is_atomic_datas_compatible(atomic_in_data, atomic_nodes_bc):
             return True
         #all_inputs = _bc_to_inputs(
         #    network, module_id, out_data_id, custom_attributes,
@@ -8153,7 +8197,7 @@ def _get_parents_of(network, node_id):
 
 def _get_children_of(network, node_id):
     assert node_id < len(network.nodes)
-    return network.transitions.get(node_id, [])
+    return network.transitions.get(node_id, set())
 
 
 def _make_parents_dict_h(network):
@@ -8319,11 +8363,11 @@ def _make_descendent_dict(network):
         niter += 1
         assert niter < 1E6, "cycle in network"
         node_id = stack.pop(0)
-        children = network.transitions.get(node_id, [])
+        children = network.transitions.get(node_id, set())
 
         # If there are no children, then it has no descendents.
         if not children:
-            descendents[node_id] = []
+            descendents[node_id] = set()
             continue
 
         # If I haven't found the descendents of all my children, try
@@ -8341,10 +8385,12 @@ def _make_descendent_dict(network):
         # If all the children are in descendents already, then the
         # descendents of this node are the children and all their
         # descendents.
-        nodes = children[:]
+        #nodes = children[:]
+        nodes = set(children)
         for child_id in children:
-            nodes.extend(descendents[child_id])
-        nodes = _uniq_intlist(nodes)
+            nodes = nodes.union(descendents[child_id])
+        #    nodes.extend(descendents[child_id])
+        #nodes = _uniq_intlist(nodes)
         descendents[node_id] = nodes
 
     return descendents
@@ -8379,8 +8425,8 @@ def _can_reach_by_fc(network, node_id, good_ids=None):
         if good_ids is not None and nid not in good_ids:
             continue
         reachable_ids[nid] = 1
-        ids = network.transitions.get(nid, [])
-        stack.extend(ids)
+        ids = network.transitions.get(nid, set())
+        stack.extend(list(ids))
     return reachable_ids
 
 
@@ -8878,39 +8924,60 @@ def _product_and_chain_h(tup_list1, tup_list2, max_length):
 
 
 def _object_to_dict(obj):
-    # Convert objects to a dictionary of their representation
-    d = {'__class__': obj.__class__.__name__, '__module__': obj.__module__, }
-    d.update(obj.__dict__)
+    # Serialize objects as dictionaries.
+    # Object:
+    #   __class__    name
+    #   __module__
+    #   <other attributes>
+    # Set:
+    #   __class__    "__set__"
+    #   __members__  list of members in set
+    
+    # Represent objects as a dictionary.
+    if isinstance(obj, set):
+        d = {
+            "__class__" : "__set__",
+            "__members__" : list(obj),
+            }
+    else:
+        d = {
+            '__class__' : obj.__class__.__name__,
+            '__module__' : obj.__module__,
+            }
+        d.update(obj.__dict__)
     return d
 
 
 def _dict_to_object(d):
     assert isinstance(d, dict)
-    args = dict((key.encode('ascii'), value) for key, value in d.items())
-    for key, value in args.iteritems():
-        if isinstance(value, dict):
-            args[key] = _dict_to_object(value)
+    obj = {}
+    for (key, value) in d.iteritems():
+        key = key.encode("ascii")
+        if isinstance(value, unicode):
+            value = value.encode('ascii')
         elif isinstance(value, list):
-            if value:
-                if isinstance(value[0], unicode):
-                    args[key] = [i.encode('ascii') for i in value]
-        elif isinstance(value, unicode):
-            args[key] = value.encode('ascii')
+            if value and isinstance(value[0], unicode):
+                value = [x.encode('ascii') for x in value]
+        elif isinstance(value, dict):
+            value = _dict_to_object(value)
         else:
             assert 'not expected type %s' % value
-    inst = args
-    if '__class__' in args:
-        class_name = args.pop('__class__')
-        module_name = args.pop('__module__')
+        obj[key] = value
+
+    if obj.get("__class__") == "__set__":
+        obj = set(obj["__members__"])
+    elif "__class__" in obj:
+        class_name = obj['__class__']
+        module_name = obj['__module__']
         if '.' in module_name:
-            module = __import__(module_name, globals(), locals(),
-                                [module_name.split('.')[-1]], -1)
+            x = module_name.split('.')[-1]
+            module = __import__(module_name, globals(), locals(), [x], -1)
         else:
             module = __import__(module_name)
         class_ = getattr(module, class_name)
-        fn = getattr(class_, '_' + class_name + '__init_from_dict')
-        inst = fn(args)
-    return inst
+        fn = getattr(class_, "_%s__init_from_dict" % class_name)
+        obj = fn(obj)
+    return obj
 
 
 import sys
