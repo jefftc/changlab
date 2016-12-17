@@ -528,8 +528,17 @@ def build_pipelines(
 
     # data_node_ids is parallel to in_data_nodes.  Each element is a
     # list of the node_ids that that data node can map onto.
-    paths = bie3.find_paths_by_start_ids(
-        network, custom_attributes, data_node_ids)
+    try:
+        paths = bie3.find_paths_by_start_ids(
+            network, custom_attributes, data_node_ids)
+    except AssertionError, x:
+        if str(x).startswith("Too many paths"):
+            # Helpful for debugging.
+            print "ERROR: Too many pipelines.  Could not generate network."
+            plot_network(
+                network_png, network, user_options=user_options,
+                verbose=verbose)
+        raise
 
     # Make sure all the --inputs are needed.  Any unnecessary ones may
     # indicate a problem.
@@ -1049,8 +1058,10 @@ def write_receipt(outfilename, network, start_ids, transitions, node_dict):
                 print >>handle, "    %s=%s" % (name, value)
 
         # commands
-        if "commands" in metadata:
-            # XXX fix this
+        commands = metadata.get("commands")
+        if commands:
+            if type(commands) is type(""):
+                commands = [commands]
             for x in metadata["commands"]:
                 print >>handle, x
 
