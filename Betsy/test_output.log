@@ -230,10 +230,10 @@ Writing network in json format: test12.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
-Found 1 possible pipeline.
+Found 2 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Pruning redundant pipelines.
-No redundant pipelines found.  1 final pipeline.
+No redundant pipelines found.  2 final pipelines.
 Making sure all input files provided.
 No file given: BamFolder.
 No file given: ReferenceGenome.
@@ -458,10 +458,10 @@ Plotting (233 node) network to test21.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
-StdRNASeqAnalysis
+CompleteRNASeqAnalysis
   adapters_trimmed=no
   aligner=star
-Made a network with 119 nodes.
+Made a network with 120 nodes.
 Writing network in json format: test22.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -477,7 +477,7 @@ No file given: ReferenceGenome.
 No file given: RSEMReferenceGenome.
 No file given: STARReferenceGenome.
 No file given: GTFGeneModel.
-Plotting (119 node) network to test22.png.
+Plotting (120 node) network to test22.png.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:

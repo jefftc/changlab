@@ -296,7 +296,7 @@ betsy_run.py --network_png test22.png --network_json test22.txt \
   --input RSEMReferenceGenome \
   --input STARReferenceGenome \
   --input GTFGeneModel \
-  --output StdRNASeqAnalysis \
+  --output CompleteRNASeqAnalysis \
   --mattr gene_model=hg19 \
   --mattr adapters_fasta=adapters/TruSeq3-PE-2.fa >& test22.log
 # Generate a heatmap.
