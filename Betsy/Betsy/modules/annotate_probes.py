@@ -8,50 +8,64 @@ class Module(AbstractModule):
         self, network, in_data, out_attributes, user_options, num_cores,
         outfile):
         import arrayio
-        from Betsy import module_utils
-        from genomicode import config
+        #from genomicode import config
         #from genomicode import arrayannot
         from genomicode import arrayplatformlib
+        from genomicode import parallel
+        from genomicode import filelib
+        from Betsy import module_utils as mlib
 
         M = arrayio.read(in_data.identifier)
-        all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
-        assert all_platforms, "Unknown platform: %s" % in_data.identifier
-        header, platform_name = all_platforms[0]
+        metadata = {}
 
         # Add GENE_ID, GENE_SYMBOL, and DESCRIPTION.  Figure out which
         # platforms provide each one of this.
         CATEGORIES = [
-            arrayplatformlib.GENE_ID, arrayplatformlib.GENE_SYMBOL,
-            arrayplatformlib.DESCRIPTION]
-        platform = arrayplatformlib.find_platform_by_name(platform_name)
+            arrayplatformlib.GENE_ID,
+            arrayplatformlib.GENE_SYMBOL,
+            # biomaRt doesn't convert description.  So just ignore it
+            # for now.
+            # TODO: implement DESCRIPTION.
+            #arrayplatformlib.DESCRIPTION,
+            ]
+
+        #all_platforms = arrayplatformlib.identify_all_platforms_of_matrix(M)
+        #assert all_platforms, "Unknown platform: %s" % in_data.identifier
+        #header, platform_name = all_platforms[0]
+        scores = arrayplatformlib.score_matrix(M)
+        assert scores, "I could not identify platform."
+        score = scores[0]
+        assert score.max_score >= 0.75, "I could not identify platform."
+        platform = arrayplatformlib.find_platform_by_name(score.platform_name)
         
         to_add = []  # list of platform names
         for category in CATEGORIES:
             x = arrayplatformlib.PLATFORMS
             x = [x for x in x if x.category == category]
             x = [x for x in x if x.bm_organism == platform.bm_organism]
-            x = [x for x in x if x.name != platform_name]
+            x = [x for x in x if x.name != score.platform_name]
             # Take the first one, of any.
             if x:
                 to_add.append(x[0].name)
+        assert to_add, "No platforms to add"
 
-        annotate_bin = config.annotate_matrix
-        annotate_bin = module_utils.which(annotate_bin)
-        assert annotate_bin, "Missing: %s" % config.annotate_matrix
-
+        annotate = mlib.get_config("annotate_matrix", which_assert_file=True)
+        sq = parallel.quote
         cmd = [
             "python",
-            annotate_bin,
-            "--header", header,
+            sq(annotate),
+            "--header", score.header,
             ]
         for x in to_add:
             x = ["--platform", x]
             cmd.extend(x)
         cmd.append(in_data.identifier)
-
-        x = module_utils.run_single(cmd)
+        cmd = " ".join(cmd)
+        x = parallel.sshell(cmd)
+        metadata["commands"] = [cmd]
+        assert x.find("Traceback") < 0, x
+        
         open(outfile, 'w').write(x)
-
 
         ## ids = M._row_order
         ## probe_header = all_platforms[0][0]
@@ -97,6 +111,8 @@ class Module(AbstractModule):
         ## f = file(outfile, 'w')
         ## arrayio.tab_delimited_format.write(M, f)
         ## f.close()
+
+        return metadata
         
 
     def name_outfile(self, antecedents, user_options):
@@ -105,6 +121,3 @@ class Module(AbstractModule):
         #original_file = module_utils.get_inputid(antecedents.identifier)
         #filename = 'signal_annot_' + original_file + '.tdf'
         #return filename
-
-
-

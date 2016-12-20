@@ -1,4 +1,4 @@
-from Betsy.rules import ArrayPlatforms as AP
+from Betsy.rules import MicroarrayPreprocessing as MP
 
 from Module import AbstractModule
 
@@ -8,15 +8,20 @@ class Module(AbstractModule):
 
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
-        outfile):
+        out_path):
         import os
-        import subprocess
-        import arrayio
-        from Betsy import module_utils
-        from genomicode import config
         import zipfile
+        #import subprocess
+        import arrayio
+        from genomicode import parallel
+        from genomicode import filelib
+        from Betsy import module_utils as mlib
+        #from genomicode import config
 
         in_data = antecedents
+        if not os.path.exists(out_path):
+            os.mkdir(out_path)
+        metadata = {}
 
         module_name = 'IlluminaExpressionFileCreator'
         params = {}
@@ -28,12 +33,12 @@ class Module(AbstractModule):
             zip_directory(in_data.identifier, zipfile_name)
             params['idat.zip'] = os.path.join(".", zipfile_name)
 
-        x = user_options.get("illu_manifest", AP.DEFAULT_MANIFEST)
-        assert x in AP.ILLU_MANIFEST, "Unknown manifest: %s" % x
+        x = user_options.get("illu_manifest", MP.DEFAULT_MANIFEST)
+        assert x in MP.ILLU_MANIFEST, "Unknown manifest: %s" % x
         params['manifest'] = x
 
-        x = user_options.get("illu_chip", AP.DEFAULT_CHIP)
-        assert x in AP.ILLU_CHIP, "Unknown chip: %s" % x
+        x = user_options.get("illu_chip", MP.DEFAULT_CHIP)
+        assert x in MP.ILLU_CHIP, "Unknown chip: %s" % x
         params['chip'] = x
 
         x = user_options.get("illu_bg_mode")
@@ -56,45 +61,30 @@ class Module(AbstractModule):
             params['custom.manifest'] = str(
                 user_options['illu_custom_manifest'])
 
-        gp_path = config.genepattern
-        gp_module = module_utils.which(gp_path)
-        assert gp_module, 'cannot find: %s' % gp_path
+        gp_module = mlib.get_config("genepattern", which_assert_file=True)
         download_directory = 'illumina_result'
-        command = [
-            gp_module,
+        sq = parallel.quote
+        cmd = [
+            sq(gp_module),
             module_name,
-            '-o', download_directory,
+            '-o', sq(download_directory),
             ]
         for key in params.keys():
             x = ['--parameters', key + ':' + params[key]]
-            command.extend(x)
+            cmd.extend(x)
+        cmd = " ".join(cmd)
+        parallel.sshell(cmd)
+        metadata["commands"] = [cmd]
+        filelib.assert_exists(download_directory)
 
-
-        process = subprocess.Popen(
-            command, shell=False, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        process.wait()
-        error_message = process.communicate()[1]
-        if error_message:
-            raise ValueError(error_message)
-
-
-        #goal_file = None
-        assert os.path.exists(download_directory), (
-            'there is no output directory for illumina'
-        )
         result_files = os.listdir(download_directory)
         #assert 'stderr.txt' not in result_files,('gene_pattern get error '+
         #        'The contents of stderr.txt is:'+
         #        file(os.path.join(download_directory,'stderr.txt')).read())
 
-        if not os.path.exists(outfile):
-            os.mkdir(outfile)
-
         for result_file in result_files:
             if result_file == 'System.out':
                 continue
-            result_path = os.path.join(outfile, result_file)
             # BUG: What if there are duplicate sample names?
             M = arrayio.read(os.path.join(download_directory, result_file))
             a = M._col_names['_SAMPLE_NAME']
@@ -103,16 +93,21 @@ class Module(AbstractModule):
             for i in b:
                 index.append(a.index(i))
             M_new = M.matrix(None, index)
+            
+            result_path = os.path.join(out_path, result_file)
             f = file(result_path, 'w')
             arrayio.gct_format.write(M_new, f)
             f.close()
 
+        return metadata
+
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'IlluFolder_' + original_file
-        return filename
+        #from Betsy import module_utils
+        #original_file = module_utils.get_inputid(antecedents.identifier)
+        #filename = 'IlluFolder_' + original_file
+        #return filename
+        return "signal.txt"
 
 
 # TODO: Move this to a library.
@@ -120,15 +115,14 @@ def zip_directory(dir, zip_file):
     import os
     import zipfile
 
-    zip = zipfile.ZipFile(zip_file, 'w', compression=zipfile.ZIP_DEFLATED)
+    out_zip = zipfile.ZipFile(zip_file, 'w', compression=zipfile.ZIP_DEFLATED)
     root_len = len(os.path.abspath(dir))
     for root, dirs, files in os.walk(dir):
         archive_root = os.path.abspath(root)[root_len:]
         for f in files:
             fullpath = os.path.join(root, f)
             archive_name = os.path.join(archive_root, f)
-            zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
-
-    zip.close()
+            out_zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
+    out_zip.close()
 
 

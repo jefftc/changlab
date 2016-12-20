@@ -1,6 +1,6 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import GeneExpProcessing
+import SignalFile
 
 GSEA_PERMUTATION = ["phenotype", "gene_set"]
 
@@ -35,7 +35,7 @@ all_data_types = [GseaFile]
 all_modules=[
     ModuleNode(
         'annotate_genes_with_gsea',
-        [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
+        [SignalFile.ClassLabelFile, SignalFile.SignalFile],
         GseaFile,
         Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
         Constraint("format",MUST_BE,'gct',1),

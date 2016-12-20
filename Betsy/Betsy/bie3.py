@@ -136,6 +136,7 @@ debug_print
 #
 # _iter_upper_diag
 # _intersect
+# _product_branches     # for _find_paths_by_start_ids_hh only (mostly)
 # _is_subset
 # _flatten
 # _flatten1_intlist
@@ -244,8 +245,9 @@ DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = False
 #DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True    # DON'T DO THIS.
 
 # Set some limits on the backchaining algorithm.
-MAX_NETWORK_SIZE = 1024 * 4
-MAX_BACKCHAIN_NODES = 1024 * 16
+MAX_NETWORK_SIZE = 4*1024        # Number of nodes in network
+MAX_BACKCHAIN_NODES = 2*1024     # Combos of antecedents for a module.
+MAX_BACKCHAIN_PATHWAYS = 64*1024  # Combos of antecedent pathways for a module.
 
 
 class AttributeDef:
@@ -586,7 +588,8 @@ class DataType:
     def __init__(self, name, *attribute_defs, **keywds):
         assert type(name) is type("")
         for x in attribute_defs:
-            assert isinstance(x, AttributeDef), repr(x)
+            assert isinstance(x, AttributeDef), \
+                   "Not AttributeDef in DataType %r:\n%r" % (name, x)
         for x in keywds:
             assert x in ["help", "no_file"]
 
@@ -867,7 +870,8 @@ class ModuleNode:
         # list of DataType objects.  Make sure it is always a list of
         # objects.  If it is a single object, make it a list.
         assert type(in_datatypes) is type([]) or \
-               isinstance(in_datatypes, DataType)
+               isinstance(in_datatypes, DataType), \
+               "Invalid antecedents in module %r." % name
         if type(in_datatypes) != type([]):
             in_datatypes = [in_datatypes]
         for x in in_datatypes:
@@ -1024,8 +1028,8 @@ class ModuleNode:
         if consequence.behavior in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
             assert out_datatype.is_valid_attribute_value(
                 consequence.name, consequence.arg1), \
-                "'%s' is not a valid value for '%s' in module '%s'" % (
-                consequence.arg1, consequence.name, name)
+                "'%s' is not a valid value for '%s.%s' in module '%s'" % (
+                consequence.arg1, out_datatype.name, consequence.name, name)
         elif consequence.behavior == SAME_AS_CONSTRAINT:
             # Make sure index on input variable is reasonable.
             index = consequence.arg1  # index of input variable
@@ -1182,7 +1186,8 @@ class Network(object):
             assert isinstance(n, DataNode) or isinstance(n, ModuleNode)
         # Make sure transitions point to the right types of objects.
         for node_id, next_ids in transitions.iteritems():
-            assert isinstance(next_ids, set)
+            assert (isinstance(next_ids, set) or
+                    isinstance(next_ids, frozenset)), repr(next_ids)
             assert node_id >= 0 and node_id < len(nodes)
             for nid in next_ids:
                 assert nid >= 0 and nid < len(nodes)
@@ -1317,7 +1322,7 @@ class Network(object):
         # Make the first node point to all the next_nodes of the other
         # node_ids.
         nid0 = node_ids[0]
-        for nidi in node_ids[1:]:
+        for nid1 in node_ids[1:]:
             #x = transitions.get(nid0, []) + transitions.get(nidi, [])
             #x = sorted({}.fromkeys(x))
             #transitions[nid0] = x
@@ -1717,7 +1722,7 @@ def _complete_network(network, custom_attributes):
             # Add id_ -> module_id.
             network.transitions[id_].update([module_id])
             #network.transitions[id_].append(module_id)
-            
+
             added.append(id_)
             debug_print(
                 DEBUG_BACKCHAIN,
@@ -2003,7 +2008,6 @@ class _OptimizeNoDuplicateModules:
 
         # Merge each of the duplicates.
         all_node_ids = _pairs2groups(duplicates)
-        num_nodes = len(network.nodes)
         network = network.merge_many_nodes(
             all_node_ids, nodeid2parents=nodeid2parents)
 
@@ -2304,7 +2308,7 @@ class _OptimizeMergeData1:
         dt1 = network.nodes[node_id1].datatype.name
         dt2 = network.nodes[node_id2].datatype.name
         assert dt1 == dt2
-        
+
         # Find the common modules for both these nodes.
         children1 = _get_children_of(network, node_id1)
         children2 = _get_children_of(network, node_id2)
@@ -2322,7 +2326,7 @@ class _OptimizeMergeData1:
             x = [x for x in x if x == dt1]
             if len(x) <= 1:
                 continue
-            
+
             if module_id not in bc_cache:
                 combos = _bc_to_input_ids(
                     network, module_id, custom_attributes,
@@ -2380,44 +2384,44 @@ class _OptimizeMergeData1:
         return similar
 
 
-    def _find_similar_nodes_old(self, network, custom_attributes,
-                                nodeid2parents):
-        # Return a list of similar nodes (node_id1, node_id2).  Can be
-        # empty.
-        data_node_ids = [
-            node_id for (node_id, node) in enumerate(network.nodes)
-            if isinstance(node, DataNode)]
-        #not_similar = {}.fromkeys(not_similar)
+##     def _find_similar_nodes_old(self, network, custom_attributes,
+##                                 nodeid2parents):
+##         # Return a list of similar nodes (node_id1, node_id2).  Can be
+##         # empty.
+##         data_node_ids = [
+##             node_id for (node_id, node) in enumerate(network.nodes)
+##             if isinstance(node, DataNode)]
+##         #not_similar = {}.fromkeys(not_similar)
 
-        # Group the nodes by datatype.
-        dt2nodeids = {} # datatype_name -> list of node_ids
-        for node_id in data_node_ids:
-            dt = network.nodes[node_id].datatype.name
-            if dt not in dt2nodeids:
-                dt2nodeids[dt] = []
-            dt2nodeids[dt].append(node_id)
+##         # Group the nodes by datatype.
+##         dt2nodeids = {} # datatype_name -> list of node_ids
+##         for node_id in data_node_ids:
+##             dt = network.nodes[node_id].datatype.name
+##             if dt not in dt2nodeids:
+##                 dt2nodeids[dt] = []
+##             dt2nodeids[dt].append(node_id)
 
-        # Optimization: The same calls are made to _fc_to_output_ids,
-        # which takes up a lot of the compute time.  Cache these
-        # calls.
-        fc_cache = {}
-        similar = []
-        for node_ids in dt2nodeids.itervalues():
-            for i, node_id1 in enumerate(node_ids):
-                #n1 = network.nodes[node_id1]
-                for node_id2 in node_ids[i+1:]:
-                    #n2 = network.nodes[node_id2]
-                    #if (id(n1), id(n2)) in not_similar:
-                    #    continue
-                    if self._are_nodes_similar(
-                        network, node_id1, node_id2, custom_attributes,
-                        nodeid2parents, fc_cache):
-                        similar.append((node_id1, node_id2))
-                    #else:
-                    #    not_similar[(id(n1), id(n2))] = 1
-                    #    not_similar[(node_id1, node_id2)] = 1
-        #not_similar = not_similar.keys()
-        return similar
+##         # Optimization: The same calls are made to _fc_to_output_ids,
+##         # which takes up a lot of the compute time.  Cache these
+##         # calls.
+##         fc_cache = {}
+##         similar = []
+##         for node_ids in dt2nodeids.itervalues():
+##             for i, node_id1 in enumerate(node_ids):
+##                 #n1 = network.nodes[node_id1]
+##                 for node_id2 in node_ids[i+1:]:
+##                     #n2 = network.nodes[node_id2]
+##                     #if (id(n1), id(n2)) in not_similar:
+##                     #    continue
+##                     if self._are_nodes_similar(
+##                         network, node_id1, node_id2, custom_attributes,
+##                         nodeid2parents, fc_cache):
+##                         similar.append((node_id1, node_id2))
+##                     #else:
+##                     #    not_similar[(id(n1), id(n2))] = 1
+##                     #    not_similar[(node_id1, node_id2)] = 1
+##         #not_similar = not_similar.keys()
+##         return similar
 
     def _are_nodes_similar(
         self, network, node_id1, node_id2, custom_attributes,
@@ -2793,6 +2797,7 @@ def find_paths_by_datatypes(network, custom_attributes, datatype_names):
 class Pathway:
     def __init__(self, node_ids, transitions, start_ids, missing_ids):
         # transitions is dictionary of node_id : frozenset of next_ids
+        # start_ids and missing_ids are lists
         assert type(node_ids) is type(frozenset())
         assert type(missing_ids) is type(frozenset())
         # Debug: Check for duplicates in node_ids.
@@ -2864,7 +2869,10 @@ def _find_paths_by_start_ids_hh(
     from genomicode import jmath
 
     PRUNE_PATHS = True
-    #PRUNE_PATHS = False
+    #PRUNE_PATHS = False    # FOR DEBUGGING
+
+    if not PRUNE_PATHS and node_id == 0:
+        print "DISABLED PRUNE_PATHS!!!"
 
     assert node_id < len(network.nodes), "%s %d" % (
         repr(node_id), len(network.nodes))
@@ -2917,6 +2925,146 @@ def _find_paths_by_start_ids_hh(
             depth+[node_id], cache)
         nodeid2pathways[pid] = x
 
+    # Optimization:
+    # Sometimes node_id will have two antecedents that are related to
+    # each other.  B is "downstream" of A.
+    #   -> A -> B -> node_id
+    #   -> A ------>
+    # A and B will share the same pathways (except for node B).  There
+    # is no need to try every combination of A and B.  Just try every
+    # pathway from B with a single pathway from A.
+    #
+    # Don't need to do this, since we're throwing out BASED_ON_DATA
+    # conflicts early now.  Not just a big problem anymore.
+
+##     # Find pathways from node_ids that are downstream of other
+##     # pathways from node_ids.  If so, then don't need to search them
+##     # both.
+##     all_node_ids = sorted(node_ids)
+##     nodeid2merged = {}
+##     for nid in all_node_ids:
+##         pathways = nodeid2pathways[nid]
+##         if len(pathways) <= 1:  # don't bother if no combinations.
+##             continue
+##         # Don't merge if there are missing_ids.
+##         has_missing = False
+##         for x in pathways:
+##             if x.missing_ids:
+##                 has_missing = True
+##                 break
+##         if has_missing:
+##             continue
+##         node_ids, transitions, missing_ids = _merge_paths(pathways)
+##         assert not missing_ids
+##         start_ids = _merge_start_ids(pathways)
+##         p = Pathway(node_ids, transitions, start_ids, missing_ids)
+##         nodeid2merged[nid] = p
+
+##     is_downstream = {}   # (B, A) -> 1  node_id B is downstream of node_id A.
+##     for i1 in range(len(all_node_ids)):
+##         for i2 in range(i1, len(all_node_ids)):
+##             nid1, nid2 = all_node_ids[i1], all_node_ids[i2]
+##             if nid1 not in nodeid2merged or nid2 not in nodeid2merged:
+##                 continue
+##             if nid1 == nid2:
+##                 is_downstream[(nid1, nid2)] = (set(), {})
+##                 continue
+##             # Check if nid1 is downstream of nid2.
+##             p1 = nodeid2merged[nid1]
+##             p2 = nodeid2merged[nid2]
+##             # nid1 should have more nodes.  If not, switch them.
+##             if len(p1.node_ids) < len(p2.node_ids):
+##                 nid1, nid2 = nid2, nid1
+##                 p1, p2 = p2, p1
+##             # All nodes from nid2 should be in nid1.
+##             x = p2.node_ids.difference(p1.node_ids)
+##             if len(x) > 0:
+##                 continue
+##             # Every transition from p2 should be in p1.  p2 is subset of p1.
+##             is_ds = True
+##             for n1 in p2.transitions:
+##                 next1 = p1.transitions.get(n1, [])
+##                 next2 = p2.transitions[n1]
+##                 # next2 should be subset of next1.
+##                 if next2.difference(next1):
+##                     is_ds = False
+##                     break
+##             if not is_ds:
+##                 continue
+##             # Find the node_ids and transitions in p1 that aren't in p2.
+##             nids = p1.node_ids.difference(p2.node_ids)
+##             trans = {}
+##             for n1, next1 in p1.transitions.iteritems():
+##                 next2 = p2.transitions.get(n1, set())
+##                 x = next1.difference(next2)
+##                 if x:
+##                     trans[n1] = x
+##             is_downstream[(nid1, nid2)] = (nids, trans)
+
+    # Optimization: Pre-check for conflicts due to BASED_ON_DATA (see
+    # case 2 below) by doing pairwise searches over branches.  Keep
+    # track of incompatible pairs and skip combinations that contain
+    # those pairs.
+    # Save (nid1, nid2), (pid1, pid2) symmetrically here.
+    based_on_data_conflicts = {}  # (nid1, nid2) -> set of (pid1, pid2)
+    # Make a list of all the modules with BASED_ON_DATA
+    # attributes.
+    # Maybe can optimize this by moving it outside this function.
+    based_on_data = {} # module_id -> set of BOD attribute names
+    for nid, node in enumerate(network.nodes):
+        if not isinstance(node, ModuleNode):
+            continue
+        x = network.nodes[nid].consequences
+        x = [x for x in x if x.behavior == BASED_ON_DATA]
+        for x in x:
+            based_on_data.setdefault(nid, set()).update([x.name])
+    # For each of the node_ids and pathways, figure out the values
+    # of the BOD attributes.
+    # (node_id, pathway_id) -> module_id -> attribute -> value
+    bod_values = {}
+    to_search = [] # list of (node_id, pathway_id, module_id, data_id, name)
+    for nid in node_ids:
+        pathways = nodeid2pathways[nid]
+        for (pid, pathway) in enumerate(pathways):
+            if pathway.missing_ids:
+                continue
+            for mid in set(based_on_data).intersection(pathway.node_ids):
+                for did in pathway.transitions.get(mid, []):
+                    for name in based_on_data[mid]:
+                        x = nid, pid, mid, did, name
+                        to_search.append(x)
+    for x in to_search:
+        nid, pid, mid, did, name = x
+        node = network.nodes[did]
+        assert name in node.attributes
+        value = node.attributes[name]
+        if (nid, pid) not in bod_values:
+            bod_values[(nid, pid)] = {}
+        if mid not in bod_values[(nid, pid)]:
+            bod_values[(nid, pid)][mid] = {}
+        assert name not in bod_values[(nid, pid)][mid]
+        bod_values[(nid, pid)][mid][name] = value
+
+    conflicts = based_on_data_conflicts   # for convenience
+    for x1, x2 in itertools.product(bod_values, bod_values):
+        (nid1, pid1), (nid2, pid2) = x1, x2
+        if nid1 == nid2:
+            continue
+        module_ids = set(bod_values[x1]).intersection(bod_values[x2])
+        for mid in module_ids:
+            for name in bod_values[x1][mid]:
+                v1 = bod_values[x1][mid][name]
+                v2 = bod_values[x2][mid][name]
+                # Could be ATOM or ENUM.
+                if v1 == v2:
+                    continue
+                if (nid1, nid2) not in conflicts:
+                    conflicts[(nid1, nid2)] = set()
+                if (nid2, nid1) not in conflicts:
+                    conflicts[(nid2, nid1)] = set()
+                conflicts[(nid1, nid2)].update([(pid1, pid2)])
+                conflicts[(nid2, nid1)].update([(pid2, pid1)])
+
     #merge_cache = {}
     for cnum, combo_ids in enumerate(combos):
         # combo is a list of node_ids.
@@ -2927,24 +3075,37 @@ def _find_paths_by_start_ids_hh(
             DEBUG_FIND_PATHS, "[%d] Backchaining to %s %s." % (
                 node_id, combo_ids, x))
 
-        # For each input, get a list of the Pathway objects.
-        #innum2branches = [
-        #    _find_paths_by_start_ids_h(
-        #        network, x, custom_attributes, node2startids, nodeid2parents,
-        #        depth+[node_id], cache)
-        #    for x in combo_ids]
+
+##         # If any of the nodes is downstream of any other node, then
+##         # only need to do the combinations of the downstream one.  Can
+##         # ignore all the paths of the upstream one (because they're
+##         # the same).
+##         # copy_branch_from[<upstream>] = <downstream>
+##         copy_branch_from = [-1] * len(combo_ids)
+##         x = range(len(combo_ids))
+##         for (i1, i2) in itertools.product(x, x):
+##             if i1 == i2:
+##                 continue
+##             n1, n2 = combo_ids[i1], combo_ids[i2]
+##             if (n1, n2) not in is_downstream:
+##                 continue
+##             # n1 is downstream of n2.
+##             # Only need a single pathway from n2.
+##             branchlen[i2] = 1
+##             copy_branch_from[i2] = i1
+
 
         # Make sure there aren't too many combinations to search.
-        MAX_COMBINATIONS = 5E4
         branchlen = [len(nodeid2pathways[x]) for x in combo_ids]
-        total = jmath.prod(branchlen)
-        assert total < MAX_COMBINATIONS, "Too many paths (%d)" % total
+        all_branches = [range(x) for x in branchlen]
+        #total = jmath.prod(branchlen)
+        total = 0
+        for x in _product_branches(
+            combo_ids, all_branches, based_on_data_conflicts):
+            total += 1
+            if total >= MAX_BACKCHAIN_PATHWAYS:
+                break
 
-        if not PRUNE_PATHS:
-            # No branches indicate an error somewhere.
-            assert total > 0
-
-        assert len(combo_ids) == len(branchlen)
         if DEBUG_FIND_PATHS:
             x = []
             for cid, bl in zip(combo_ids, branchlen):
@@ -2953,6 +3114,43 @@ def _find_paths_by_start_ids_hh(
             debug_print(
                 DEBUG_FIND_PATHS, "[%d] Found %d possible combinations (%s)." %
                 (node_id, total, x))
+
+        # DEBUG: Print out the pathways if there are too many
+        # combinations.
+        if total >= MAX_BACKCHAIN_PATHWAYS:
+            if False:
+                # Print out all pathways for one antecedent.
+                I = [0, 1]  # which one to print?
+                for j, i_combo in enumerate(I):
+                    nid = combo_ids[i_combo]
+                    for i, pathway in enumerate(nodeid2pathways[nid]):
+                        filename = "backchain-%d-%02d.png" % (j, i)
+                        print "[%02d:%02d] %s" % (
+                            i, len(nodeid2pathways[nid]), filename)
+                        transitions = []
+                        for n1, next_ids in pathway.transitions.iteritems():
+                            for n2 in next_ids:
+                                transitions.append((n1, n2))
+                        plot_network_gv(
+                            filename, network, bold=pathway.node_ids,
+                            bold_transitions=transitions,
+                            highlight_green=pathway.start_ids,
+                            highlight_orange=pathway.missing_ids,
+                            highlight_yellow=pathway.node_ids, verbose=True)
+            module_name = get_node_name(network.nodes[node_id])
+            dtype_names = [get_node_name(network.nodes[x]) for x in combo_ids]
+            msg = []
+            msg.append("Too many paths [%d] %s:" % (node_id, module_name))
+            for i in range(len(branchlen)):
+                x = "  [%d] %s (%d)" % (
+                    combo_ids[i], dtype_names[i], branchlen[i])
+                msg.append(x)
+            msg = "\n".join(msg)
+            assert total < MAX_BACKCHAIN_PATHWAYS, msg
+
+        #if not PRUNE_PATHS:
+        #    # No branches indicate an error somewhere.
+        #    assert total > 0
 
         # Optimization: If there is already a possibility with
         # nomissing, then don't even consider the paths that will
@@ -3032,35 +3230,65 @@ def _find_paths_by_start_ids_hh(
         # hard to predict whether changes in NODE_4 will be exactly
         # unique.
         # Don't do this optimization until we figure out a better way.
-        checked_pathway = {}
-        #makes_same_pathways = []
+        #checked_pathway = {}
 
         # Try different combinations of paths for each branch.
-        #for bnum, branches in enumerate(itertools.product(*innum2branches)):
-        x = [range(x) for x in branchlen]
-        for bnum, branches_i in enumerate(itertools.product(*x)):
-            ## Make sure branches_i doesn't lead to the same pathways.
-            ## See explanation above.
-            #same = False
-            #for pattern in makes_same_pathways:
-            #    #assert len(pattern) == len(branches_i)
-            #    x = [x1 for (x1, x2) in zip(pattern, branches_i) if
-            #         x1 != None and x1 != x2]
-            #    if not x:
-            #        # Matches a pattern
-            #        same = True
-            #        break
-            #if same:
-            #    continue
+        #all_branches = [range(x) for x in branchlen]
+        #for bnum, branch_ids in enumerate(itertools.product(*all_branches)):
+        for bnum, branch_ids in enumerate(_product_branches(
+            combo_ids, all_branches, based_on_data_conflicts)):
+            # combos        [(1, 2, 5), (1, 3, 5), (4, 3, 5)]
+            # combo_ids     (1, 2, 5)
+            # cnum          0             Index of combo_ids into combos.
+            # branchlen     [4, 1, 8]
+            # all_branches  [range(4), range(1), range(8)]
+            # branch_ids    [1, 0, 4]     Index of branch (up to branchlen)
+            # bnum          12            Index of branch_ids into all_branches
+            # branches      [Path 1 (node 1), Path 0 (node 2), Path 4 (node 5)]
 
             # Get the branches.
-            branches = [None] * len(branches_i)   # list of Pathways
-            # list of (node_id, index of Pathway)
-            branch_ids = [None] * len(branches_i)
-            for i_combo, i_branch in enumerate(branches_i):
-                nid = combo_ids[i_combo]
-                branches[i_combo] = nodeid2pathways[nid][i_branch]
-                branch_ids[i_combo] = (nid, i_branch)
+            branches = [None] * len(branch_ids)   # list of Pathways
+            for i in range(len(branch_ids)):
+                branches[i] = nodeid2pathways[combo_ids[i]][branch_ids[i]]
+
+            #is_valid_branches = True
+            #for i in range(len(branch_ids)):
+            #    if copy_branch_from[i] < 0:
+            #        branches[i] = nodeid2pathways[combo_ids[i]][branch_ids[i]]
+            #    else:
+            #        # Copy downstream pathway j, but remove the stuff
+            #        # downstream of i.
+            #        raise NotImplementedError
+            #        p = nodeid2pathways[combo_ids[i]][0]
+            #
+            #        j = copy_branch_from[i]  # i is upstream
+            #        p = nodeid2pathways[combo_ids[j]][branch_ids[j]]
+            #        nid1, nid2 = combo_ids[j], combo_ids[i]
+            #        (d_nids, d_trans) = is_downstream[(nid1, nid2)]
+            #        nids = p.node_ids.difference(d_nids)
+            #        trans = {}
+            #        for n, orig_next in p.transitions.iteritems():
+            #            d_next = d_trans.get(n, set())
+            #            new_next = orig_next.difference(d_next)
+            #            if new_next:
+            #                trans[n] = new_next
+            #        assert not p.missing_ids
+            #        start_ids = p.start_ids[:]
+            #        for j in range(len(start_ids)):
+            #            if start_ids[j] not in nids:
+            #                start_ids[j] = None
+            #        p = Pathway(nids, trans, start_ids, p.missing_ids)
+            #        branches[i] = p
+            #
+            #    # If pathway i is upstream of pathway j, it is
+            #    # possible that not every branch of pathway j goes
+            #    # through pathway i.  If this is the case, then this
+            #    # combination is not valid and should be ignored.
+            #    if combo_ids[i] not in branches[i].node_ids:
+            #        is_valid_branches = False
+            #        break
+            #if not is_valid_branches:
+            #    continue
 
             # This _merge_paths is called 99.999% of the time.
             #if merge_cache:
@@ -3083,14 +3311,12 @@ def _find_paths_by_start_ids_hh(
             #node_ids, transitions, missing_ids = _merge_paths_cached(
             #    branch_ids, branches, merge_cache)
 
-
             # Optimization: If there's already a nomissing path, then
             # skip all paths with missing_ids.
             # Actually, this never happens.
             #if not has_missing and missing_ids:
             #    continue
 
-            # Add node_id to this set of node_ids.
             assert node_id not in node_ids
             node_ids = node_ids.union([node_id])
             # Add transitions to this node.
@@ -3099,7 +3325,6 @@ def _find_paths_by_start_ids_hh(
                     transitions[x] = frozenset([node_id])
                 else:
                     transitions[x] = transitions[x].union([node_id])
-
 
             # See if these paths conflict.  Paths may conflict if:
             # 1.  Different data nodes are used for the same start_id.
@@ -3125,25 +3350,11 @@ def _find_paths_by_start_ids_hh(
                 continue
 
             # Merge each of the branches into one path.
+            path = Pathway(node_ids, transitions, start_ids, missing_ids)
             # Optimization: If this pathway has already been checked,
             # then don't check it again.
-            path = Pathway(node_ids, transitions, start_ids, missing_ids)
-            if path in checked_pathway:
-                # This happens very often.  This can happen if there
-                # are multiple equivalent routes through a network
-                # (e.g. steps done in different order).  Branches take
-                # different combinations of routes, but when you merge
-                # them, they end up the same.
-                #old_branches_i = checked_pathway[path]
-                #x = [None] * len(branches_i)
-                #for i in range(len(branches_i)):
-                #    if branches_i[i] == old_branches_i[i]:
-                #        continue
-                #    x[i] = branches_i[i]
-                #makes_same_pathways.append(tuple(x))
+            if path in all_paths:
                 continue
-            #checked_pathway[path] = 1
-            checked_pathway[path] = branches_i
 
             # Case 2.  Look for modules with a BASED_ON_DATA
             # consequence.  Then, make sure the attribute values of
@@ -3223,12 +3434,11 @@ def _find_paths_by_start_ids_hh(
 
             #if not path.missing_ids and has_missing:
             #    has_missing = False
-            assert path not in all_paths
 
+            assert path not in all_paths
             debug_print(
                 DEBUG_FIND_PATHS, "[%d] Adding path %s." % (node_id, path))
-
-            all_paths[path] = 1
+            all_paths[path] = (cnum, bnum, branch_ids)
 
     # If any of the paths have no missing nodes, then remove all paths
     # with missing nodes.
@@ -4695,6 +4905,21 @@ def _prune_parallel_pipelines(network, paths, nodeid2parents):
     global SUBPATH_CACHE   # for optimization
     SUBPATH_CACHE = {}
 
+    if False:
+        for i, pathway in enumerate(paths):
+            filename = "parallel-%02d.png" % i
+            print "[%02d:%02d] %s" % (i, len(paths), filename)
+            transitions = []
+            for n1, next_ids in pathway.transitions.iteritems():
+                for n2 in next_ids:
+                    transitions.append((n1, n2))
+            plot_network_gv(
+                filename, network, bold=pathway.node_ids,
+                bold_transitions=transitions,
+                highlight_green=pathway.start_ids,
+                highlight_orange=pathway.missing_ids,
+                highlight_yellow=pathway.node_ids, verbose=True)
+
     #plot_pipelines(
     #    "pipeline", network, paths, {}, max_pipelines=16, verbose=True)
 
@@ -5556,10 +5781,9 @@ def check_moduledb(moduledb):
 
     # Make sure no duplicate modules.
     dups = ["%s (%d times)" % (x, seen[x]) for x in seen if seen[x] > 1]
-    msg = ""
-    x = dups
-    if len(x) > 5:
-        x = x[:5] + ["... plus %s more" % (len(dups) - 5)]
+    msg = "\n".join(dups)
+    if len(dups) > 5:
+        x = dups[:5] + ["... plus %s more" % (len(dups) - 5)]
         msg = "\n".join(x)
     assert not dups, "Duplicate modules: %s" % msg
 
@@ -5796,6 +6020,29 @@ def plot_network_gv(
         edge2attributes=gv_edge2attr, prog="dot", directed=True)
     G.draw(filename)
     #G.write("test.gv")
+
+
+def plot_pathways_gv(filestem, network, pathways, max_pathways=None,
+                     verbose=False, print_status=False):
+    if max_pathways is not None:
+        pathways = pathways[:max_pathways]
+    for i, pathway in enumerate(pathways):
+        filename = "%s-%02d.png" % (filestem, i)
+        if print_status:
+            print "[%02d:%02d] %s" % (i, len(pathways), filename)
+        transitions = []
+        for n1, next_ids in pathway.transitions.iteritems():
+            for n2 in next_ids:
+                transitions.append((n1, n2))
+        x = pathway.node_ids
+        x = x.difference(pathway.start_ids)
+        x = x.difference(pathway.missing_ids)
+        plot_network_gv(
+            filename, network, bold=pathway.node_ids,
+            bold_transitions=transitions,
+            highlight_green=pathway.start_ids,
+            highlight_orange=pathway.missing_ids,
+            highlight_yellow=x, verbose=verbose)
 
 
 def read_network(file_or_handle):
@@ -6408,6 +6655,7 @@ def _bc_to_input_ids(
     # search to specific input or output IDs.
     import itertools
     from genomicode import jmath
+    from genomicode import parselib
 
     if not nodeid2parents:
         nodeid2parents = _make_parents_dict(network)
@@ -6448,9 +6696,75 @@ def _bc_to_input_ids(
                 network, module_id, i, network.nodes[x], custom_attributes)]
             args[i] = x
 
+    # Optimize: Ignore inputs that violate SAME_AS constraints.
+    # Pull out the SAME_AS constraints.
+    node = network.nodes[module_id]
+    x = node.constraints
+    x = [x for x in x if x.behavior == SAME_AS]
+    same_as_cons = x
+    same_as_values = {}  # (i1, i2) -> set of attributes
+    for cons in same_as_cons:
+        i1, i2 = cons.arg1, cons.input_index
+        same_as_values.setdefault((i1, i2), set()).update([cons.name])
+        same_as_values.setdefault((i2, i1), set()).update([cons.name])
+    same_as_conflicts = {}  # (arg_i1, arg_i2) -> set of (nid1, nid2)
+    for (i1, i2), attributes in same_as_values.iteritems():
+        for nid1, nid2 in itertools.product(args[i1], args[i2]):
+            node1, node2 = network.nodes[nid1], network.nodes[nid2]
+            for name in attributes:
+                assert name in node1.attributes, "%s %s" % (
+                    node1.datatype.name, name)
+                assert name in node2.attributes, "%s %s" % (
+                    node2.datatype.name, name)
+                attr1 = node1.attributes[name]
+                attr2 = node2.attributes[name]
+                if _is_attribute_compatible(attr1, attr2) or \
+                   _is_attribute_compatible(attr2, attr1):
+                    # Compatible, don't add to conflicts.
+                    continue
+                if (i1, i2) not in same_as_conflicts:
+                    same_as_conflicts[(i1, i2)] = set()
+                if (i2, i1) not in same_as_conflicts:
+                    same_as_conflicts[(i2, i1)] = set()
+                same_as_conflicts[(i1, i2)].update([(nid1, nid2)])
+                same_as_conflicts[(i2, i1)].update([(nid2, nid1)])
+
     l = [len(x) for x in args]
-    total = jmath.prod(l)
-    assert total < MAX_BACKCHAIN_NODES, "Too many possible inputs [%d]" % total
+    #old_total = jmath.prod(l)
+    # If there are same_as_conflicts, the total number of
+    # possibilities is probably much less.
+
+    I = range(len(args))
+    total = 0
+    for x in _product_branches(I, args, same_as_conflicts):
+        total += 1
+        if total >= MAX_BACKCHAIN_NODES:
+            break
+        
+    if total >= MAX_BACKCHAIN_NODES:
+        # Try to diagnose why there are so many backchain nodes.
+        msg = []
+        p = msg.append
+        p("Input data types:")
+        for i in range(len(module.in_datatypes)):
+            node_ids = args[i]   # prior nodes for in_datatypes[i]
+            nodes = [network.nodes[x] for x in node_ids]
+            p("%d.  %s (%d)" % (i, module.in_datatypes[i].name, len(node_ids)))
+            attr2counts = {}
+            for i1 in range(len(nodes)-1):
+                for i2 in range(i1+1, len(nodes)):
+                    n1, n2 = nodes[i1], nodes[i2]
+                    x, x, attrs = _score_same_data(n1, n2)
+                    for a in attrs:
+                        attr2counts[a] = attr2counts.get(a, 0) + 1
+            for a in attr2counts:
+                p("    %r different in %d pairs of antecedents." % (
+                    a, attr2counts[a]))
+        msg = "\n".join(msg)
+        x1 = parselib.pretty_int(total)
+        x2 = get_node_name(network.nodes[module_id])
+        assert total < MAX_BACKCHAIN_NODES, \
+               "Too many inputs to module %r.\n%s" % (x2, msg)
 
     valid = []
     # This doesn't work.  The same module can have multiple inputs and
@@ -6466,7 +6780,10 @@ def _bc_to_input_ids(
 
     # The multiple in_datatypes case is harder, because we don't know
     # the order of the inputs.
-    for input_ids in itertools.product(*args):
+
+    # Save (arg_i1, arg_i2), (nid1, nid2) symmetrically here.
+    I = range(len(args))
+    for input_ids in _product_branches(I, args, same_as_conflicts):
         assert len(input_ids) == len(module.in_datatypes)
 
         # Don't check again if already done.
@@ -7152,7 +7469,7 @@ def _is_valid_output(module, data, save_conflicts=False):
                 DEBUG_BACKCHAIN, "Attr %r: matches defaults." % attrdef.name)
 
     if found_conflict:
-        assert not save_conflicts   # should have exited already if true
+        assert save_conflicts   # should have exited already if not saved
         return False
 
     # TESTING.
@@ -7299,12 +7616,11 @@ def _is_valid_outdata_id_path(network, path, out_id, custom_attributes,
     return False
 
 
-def _is_valid_outmodule_id_path(network, paths, parent_ids, module_id,
+def _is_valid_outmodule_id_path(network, pathways, parent_ids, module_id,
                                 custom_attributes, nodeid2parents):
     # Can the nodes in this pathway produce module_id.  out_id must be a
-    # Module node.
-    # paths should be parallel to parent_ids.  Each should be a path
-    # that creates the parent_id.
+    # Module node.  pathways should be a list parallel to parent_ids.
+    # Each should be a Pathway that leads to the parent_id.
     assert isinstance(network.nodes[module_id], ModuleNode)
 
     # If these are all the same, then no need to check again.
@@ -7322,12 +7638,13 @@ def _is_valid_outmodule_id_path(network, paths, parent_ids, module_id,
     if not same_as_cons:
         return True
 
-    combo_nodes = [
-        _get_atomic_data_node_from_pathway(
-            network, paths[i], parent_ids[i], custom_attributes,
+    combo_nodes = [None] * len(parent_ids)
+    for i, pid in enumerate(parent_ids):
+        x = _get_atomic_data_node_from_pathway(
+            network, pathways[i], pid, custom_attributes,
             ignore_based_on_data=True, ignore_unchanged=True,
             nodeid2parents=nodeid2parents)
-        for i in range(len(parent_ids))]
+        combo_nodes[i] = x
 
     # Check if these inputs violate SAME_AS constraints.
     for cons in same_as_cons:
@@ -7382,13 +7699,13 @@ def _find_same_data(nodes, node, dt2nodeids=None):
     # -1 if not found.
 
     # Optimization:
-    # dt2nodeids is datatype name -> set of node_ids    
+    # dt2nodeids is datatype name -> set of node_ids
     assert isinstance(node, DataNode)
 
     node_ids = range(len(nodes))
     if dt2nodeids is not None:
         node_ids = dt2nodeids.get(node.datatype.name, [])
-        
+
     attr2 = {}  # clean up for comparison
     is_enum = {}  # key -> 1
     for key, value in node.attributes.iteritems():
@@ -7724,7 +8041,6 @@ def _dedup_data_nodes(data_nodes):
 def _merge_attribute_values(values1, values2):
     t1 = _get_attribute_type(values1)
     t2 = _get_attribute_type(values2)
-    values = None
     if t1 == TYPE_ATOM and t2 == TYPE_ATOM:
         if values1 == values2:
             return values1
@@ -7922,7 +8238,7 @@ def _get_atomic_data_node_from_pathway_h(
     # OPTIMIZATION: Maybe can memoize this function?  Seems to be
     # called repeatedly for the same nodes.  Actually, doesn't take up
     # that much time.
-    assert node_id in path.node_ids
+    assert node_id in path.node_ids, "Missing: %s" % node_id
     node = network.nodes[node_id]
     assert isinstance(node, DataNode)
     if _is_data_node_atomic(node):
@@ -8097,7 +8413,6 @@ def _does_based_on_data_conflict_with_out_data(network, node_ids, transitions):
     # Make a list of the module_node_ids in any of these
     # branches with BASED_ON_DATA consequences.
 
-    based_on_data = []  # list of (module_node_id, cons name)
     # Precalculating based_on_data for the whole network
     # does not save much time.
     #for module_id in node_ids:
@@ -8107,6 +8422,7 @@ def _does_based_on_data_conflict_with_out_data(network, node_ids, transitions):
     #        based_on_data_1.extend(x)
     module_node_ids = [x for x in node_ids
          if isinstance(network.nodes[x], ModuleNode)]
+    based_on_data = []  # list of (module_node_id, cons name)
     for module_id in module_node_ids:
         x = network.nodes[module_id].consequences
         x = [x for x in x if x.behavior == BASED_ON_DATA]
@@ -8480,6 +8796,46 @@ def _iter_upper_diag_h(n):
 
 def _intersect(x, y):
     return list(set(x).intersection(y))
+
+
+def _product_branches_h(combo_ids_L, branch_ids_L, combo_ids_R, branch_ids_R,
+                        conflicts):
+    # combo_ids_L    list (previous history)
+    # branch_ids_L   list (previous history)
+    # combo_ids_R    list (to try)
+    # branch_ids_R   list of lists  (to try)
+    # Moving from right to left.
+    assert len(combo_ids_L) == len(branch_ids_L)
+    assert len(combo_ids_R) == len(branch_ids_R)
+    if not combo_ids_R:
+        yield ()
+        return
+
+    cid_r = combo_ids_R[0]
+    for bid_r in branch_ids_R[0]:
+        # Make sure it doesn't conflict with anything that's come
+        # before.
+        conflict = False
+        for i in range(len(combo_ids_L)):
+            cid_l = combo_ids_L[i]
+            bid_l = branch_ids_L[i]
+            x = conflicts.get((cid_l, cid_r), [])
+            if (bid_l, bid_r) in x:
+                conflict = True
+                break
+        if conflict:
+            continue
+        for x in _product_branches_h(
+            combo_ids_L+[cid_r], branch_ids_L+[bid_r],
+            combo_ids_R[1:], branch_ids_R[1:], conflicts):
+            yield (bid_r,) + x
+
+
+def _product_branches(combo_ids, branch_ids, conflicts):
+    # combo_ids is a list
+    # branch_ids is a list of lists
+    for x in _product_branches_h([], [], combo_ids, branch_ids, conflicts):
+        yield x
 
 
 def _is_subset(x, y):
@@ -8932,7 +9288,7 @@ def _object_to_dict(obj):
     # Set:
     #   __class__    "__set__"
     #   __members__  list of members in set
-    
+
     # Represent objects as a dictionary.
     if isinstance(obj, set):
         d = {

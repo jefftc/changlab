@@ -38,11 +38,11 @@ class Module(AbstractModule):
         os.rename(outputfile, outfile)
 
 
-
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'signal_mas5_' + original_file + '.jeffs'
-        return filename
+        #from Betsy import module_utils
+        #original_file = module_utils.get_inputid(antecedents.identifier)
+        #filename = 'signal_mas5_' + original_file + '.jeffs'
+        #return filename
+        return "signal.txt"
 
 

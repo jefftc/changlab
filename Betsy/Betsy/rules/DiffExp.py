@@ -1,9 +1,10 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import GeneExpProcessing as GEP
+import SignalFile
 import GOAnalysis
 import GSEAAnalysis
-import Clustering
+#import Clustering
+import ExpressionVisualization as EV
 
 
 DE_ALGORITHM = ["fold_change", "ttest", "sam", "ebayes"]
@@ -31,7 +32,7 @@ all_data_types = [
 all_modules = [
     ModuleNode(
         'calc_diffexp_with_ttest',
-        [GEP.SignalFile, GEP.ClassLabelFile], DiffExprFile,
+        [SignalFile.SignalFile, SignalFile.ClassLabelFile], DiffExprFile,
         ## OptionDef(
         ##     "fold_change_cutoff", "",
         ##     help="Keep only genes that change by at least this fold change.")
@@ -57,7 +58,7 @@ all_modules = [
     
     ModuleNode(
         'calc_diffexp_with_sam',
-        [GEP.SignalFile, GEP.ClassLabelFile], DiffExprFile,
+        [SignalFile.SignalFile, SignalFile.ClassLabelFile], DiffExprFile,
         ## OptionDef(
         ##     "sam_delta_value", 1.0,
         ##     help="delta value for sam differential expression method"),
@@ -77,7 +78,7 @@ all_modules = [
     
     ModuleNode(
         'calc_diffexp_with_ebayes',
-        [GEP.SignalFile, GEP.ClassLabelFile], DiffExprFile,
+        [SignalFile.SignalFile, SignalFile.ClassLabelFile], DiffExprFile,
         ## OptionDef(
         ##      "diffexp_foldchange_value", "",
         ##      help="fold change value for differential expression analysis"),
@@ -94,7 +95,7 @@ all_modules = [
     
     ModuleNode(
         'calc_diffexp_with_fold_change',
-        [GEP.SignalFile, GEP.ClassLabelFile], DiffExprFile,
+        [SignalFile.SignalFile, SignalFile.ClassLabelFile], DiffExprFile,
         ## OptionDef(
         ##     "fold_change_cutoff", "",
         ##     help="Keep only genes that change by at least this fold change.")
@@ -111,7 +112,7 @@ all_modules = [
     
     ModuleNode(
         "filter_genes_by_diffexp",
-        [GEP._SignalFile_Filter, DiffExprFile], BDT.GeneListFile,
+        [SignalFile._SignalFile_Filter, DiffExprFile], BDT.GeneListFile,
         OptionDef(
             "fold_change_cutoff", "2",
             help="Filter genes with less than this fold change."),
@@ -134,7 +135,7 @@ all_modules = [
     
     ModuleNode(
         'make_diffgenes_report',
-        [DiffExprFile, DiffExprFile, Clustering.Heatmap, GOAnalysis.GatherFile,
+        [DiffExprFile, DiffExprFile, EV.Heatmap, GOAnalysis.GatherFile,
          GSEAAnalysis.GseaFile], DiffReportFile,
         OptionDef("hm_width", 20),
         OptionDef("hm_height", 1),

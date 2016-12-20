@@ -2104,7 +2104,7 @@ def main():
         options.width, options.height, options.scale_border,
         options.grid, options.scale_grid,
         options.color_scheme, options.inverse,
-        signal_0, signal_1,  options.black0,
+        signal_0, signal_1, options.black0,
         options.pvalue,
         # Labels
         options.label_genes, options.label_arrays,

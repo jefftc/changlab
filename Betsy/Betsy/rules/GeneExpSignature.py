@@ -1,8 +1,7 @@
-#GeneExpSignature
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import GeneExpProcessing as GEP
-import PcaAnalysis
+import SignalFile
+#import PcaAnalysis
 
 GenesetAnalysis=DataType(
     'GenesetAnalysis',
@@ -44,7 +43,7 @@ SignatureScore = DataType(
         help="contents"),
     AttributeDef(
         "preprocess", BDT.ANY_PREPROCESS, 'unknown', 'any',
-        #"preprocess", GEP.PREPROCESS, 'unknown', 'unknown',
+        #"preprocess", SignalFile.PREPROCESS, 'unknown', 'unknown',
         help="preprocess"),
     help="Output path containing results from scoresig analysis.",
     )
@@ -71,7 +70,7 @@ all_modules = [
     ModuleNode(
         'score_pathway_with_geneset',
         [GenesetFile,
-         GEP.SignalFile], GenesetAnalysis,
+         SignalFile.SignalFile], GenesetAnalysis,
          OptionDef("geneset_value", help="geneset to score pathway"),
          #Constraint("quantile_norm", MUST_BE, 'yes', 1),
          Constraint("gene_center", MUST_BE, 'mean', 1),
@@ -88,7 +87,7 @@ all_modules = [
     ModuleNode(
         'score_pathway_with_geneset_all',
         [GenesetFile,
-         GEP.SignalFile], GenesetAnalysis,
+         SignalFile.SignalFile], GenesetAnalysis,
          #Constraint("quantile_norm", MUST_BE, 'yes', 1),
          Constraint("gene_center", MUST_BE, 'mean', 1),
          Constraint("gene_normalize", MUST_BE, 'variance', 1),
@@ -115,7 +114,7 @@ all_modules = [
         ),
     ModuleNode(
         'score_pathway_with_scoresig_affymetrix',
-        [GEP.SignalFile, GEP.SignalFile], SignatureScore,
+        [SignalFile.SignalFile, SignalFile.SignalFile], SignatureScore,
         Constraint("format", MUST_BE, 'tdf', 0),
         Constraint("preprocess", MUST_BE, 'rma', 0),
         Constraint("quantile_norm", MUST_BE, 'yes', 0),
@@ -135,9 +134,8 @@ all_modules = [
         ),
      ModuleNode(
         'score_pathway_with_scoresig',
-        GEP.SignalFile, SignatureScore,
+        SignalFile.SignalFile, SignatureScore,
         Constraint("format", MUST_BE, 'tdf'),
-        #Constraint("preprocess", CAN_BE_ANY_OF, GeneExpProcessing.PREPROCESS_WOrma, 0),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
         Constraint("quantile_norm", MUST_BE, 'yes'),
         Constraint("logged", MUST_BE, 'yes'),

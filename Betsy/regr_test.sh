@@ -296,7 +296,7 @@ betsy_run.py --network_png test22.png --network_json test22.txt \
   --input RSEMReferenceGenome \
   --input STARReferenceGenome \
   --input GTFGeneModel \
-  --output StdRNASeqAnalysis \
+  --output CompleteRNASeqAnalysis \
   --mattr gene_model=hg19 \
   --mattr adapters_fasta=adapters/TruSeq3-PE-2.fa >& test22.log
 # Generate a heatmap.
@@ -307,5 +307,5 @@ betsy_run.py --network_png test23.png --network_json test23.txt \
 # Preprocess Illumina microarray data.
 betsy_run.py --network_png test24.png --network_json test24.txt \
   --input ExpressionFiles \
-  --output PreprocessingReport \
-  --dattr PreprocessingReport.preprocess=illumina >& test24.log
+  --output CompleteExpressionPreprocessing \
+  --dattr CompleteExpressionPreprocessing.preprocess=illumina >& test24.log

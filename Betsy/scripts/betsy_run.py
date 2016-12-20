@@ -528,8 +528,17 @@ def build_pipelines(
 
     # data_node_ids is parallel to in_data_nodes.  Each element is a
     # list of the node_ids that that data node can map onto.
-    paths = bie3.find_paths_by_start_ids(
-        network, custom_attributes, data_node_ids)
+    try:
+        paths = bie3.find_paths_by_start_ids(
+            network, custom_attributes, data_node_ids)
+    except AssertionError, x:
+        if str(x).startswith("Too many paths"):
+            # Helpful for debugging.
+            print "ERROR: Too many pipelines.  Could not generate network."
+            plot_network(
+                network_png, network, user_options=user_options,
+                verbose=verbose)
+        raise
 
     # Make sure all the --inputs are needed.  Any unnecessary ones may
     # indicate a problem.
@@ -1049,8 +1058,10 @@ def write_receipt(outfilename, network, start_ids, transitions, node_dict):
                 print >>handle, "    %s=%s" % (name, value)
 
         # commands
-        if "commands" in metadata:
-            # XXX fix this
+        commands = metadata.get("commands")
+        if commands:
+            if type(commands) is type(""):
+                commands = [commands]
             for x in metadata["commands"]:
                 print >>handle, x
 
@@ -1825,6 +1836,32 @@ def main():
             #write_network(args.network_json, network) 
         raise
 
+    if args.output_file and node_dict and 0 in node_dict:
+        print "Saving output %s to %s." % (outtype, args.output_file)
+        sys.stdout.flush()
+        output_file = node_dict[0].identifier
+        reportlib.copy_file_or_path(output_file, args.output_file)
+
+    # See what else to save.
+    also_save = []  # list of (arg, "lowest" or "highest")
+    for arg in args.also_save_lowest:
+        also_save.append((arg, "lowest"))
+    for arg in args.also_save_highest:
+        also_save.append((arg, "highest"))
+    for arg, which_one in also_save:
+        # Format: <datatype>,<file_or_path>
+        x = arg.split(",", 1)
+        assert len(x) == 2, "Invalid also_save: %s" % arg
+        dname, out_filename = x
+        if which_one == "lowest":
+            node_id = _find_lowest_datatype(network, dname, node_dict.keys())
+        else:
+            node_id = _find_highest_datatype(network, dname, node_dict.keys())
+        assert node_id, "Unable to find: %s" % dname
+        in_filename = node_dict[node_id].identifier
+        print "Saving %s to %s." % (dname, out_filename)
+        reportlib.copy_file_or_path(in_filename, out_filename)
+        
     # Draw the final network.
     node_dict = node_dict or {}
     transitions = transitions or {}
@@ -1863,32 +1900,6 @@ def main():
     #    print "Writing detailed network: %s." % args.network_text
     #    bie3.print_network(network, outhandle=args.network_text)
 
-    if args.output_file and node_dict and 0 in node_dict:
-        print "Saving output %s to %s." % (outtype, args.output_file)
-        sys.stdout.flush()
-        output_file = node_dict[0].identifier
-        reportlib.copy_file_or_path(output_file, args.output_file)
-
-    # See what else to save.
-    also_save = []  # list of (arg, "lowest" or "highest")
-    for arg in args.also_save_lowest:
-        also_save.append((arg, "lowest"))
-    for arg in args.also_save_highest:
-        also_save.append((arg, "highest"))
-    for arg, which_one in also_save:
-        # Format: <datatype>,<file_or_path>
-        x = arg.split(",", 1)
-        assert len(x) == 2, "Invalid also_save: %s" % arg
-        dname, out_filename = x
-        if which_one == "lowest":
-            node_id = _find_lowest_datatype(network, dname, node_dict.keys())
-        else:
-            node_id = _find_highest_datatype(network, dname, node_dict.keys())
-        assert node_id, "Unable to find: %s" % dname
-        in_filename = node_dict[node_id].identifier
-        print "Saving %s to %s." % (dname, out_filename)
-        reportlib.copy_file_or_path(in_filename, out_filename)
-        
     print "Done."
 
 

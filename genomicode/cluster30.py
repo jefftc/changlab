@@ -2,6 +2,7 @@
 
 Functions:
 cluster30
+cluster30_file
 cluster_hierarchical
 cluster_kmeans
 
@@ -65,7 +66,14 @@ def cluster30_file(
     import config
     import parallel
     import filelib
-    
+
+    # Creates a cdt file with headers:
+    # GID  <COL0>  NAME  GWEIGHT  <COL1>  [<SAMPLES>...]
+    # <COL0>  first header from input file.
+    # <COL1>  second header from input file.
+    # If <COL0> or <COL1> is "NAME", will generate duplicate headers.
+
+
     assert algorithm in ["hierarchical", "kmeans", "som"]
     distance = distance or "pearson"
     assert distance in DIST2ID, "Unknown distance: %s" % distance
