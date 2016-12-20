@@ -1,6 +1,6 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import GeneExpProcessing as GEP
+import SignalFile
 
 TCGAID = DataType(
     "TCGAID",
@@ -80,7 +80,7 @@ all_modules = [
         help="select the tumor sample only in the TCGAFile"),
     
     ModuleNode(
-        'preprocess_tcga', TCGAFile, GEP.UnprocessedSignalFile,
+        'preprocess_tcga', TCGAFile, SignalFile.UnprocessedSignalFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Constraint("tumor_only", MUST_BE, 'yes'),
         Constraint(

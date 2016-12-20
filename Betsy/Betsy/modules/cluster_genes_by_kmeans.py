@@ -10,38 +10,21 @@ class Module(AbstractModule):
         import os
         import shutil
         from genomicode import filelib
-        from genomicode import cluster30
         from Betsy import module_utils as mlib
+        import cluster_genes_by_hierarchical as clust
         
         filelib.safe_mkdir(out_path)
         metadata = {}
 
-        DISTANCE_MEASURES = cluster30.DIST2ID.keys()
-        YESNO = ["yes", "no"]
-
         kmeans_k = mlib.get_user_option(
             user_options, "kmeans_k", not_empty=True, type=int)
-        cluster_genes = mlib.get_user_option(
-            user_options, "cluster_genes", not_empty=True,
-            allowed_values=YESNO)
-        cluster_arrays = mlib.get_user_option(
-            user_options, "cluster_arrays", not_empty=True,
-            allowed_values=YESNO)
-        distance_metric = mlib.get_user_option(
-            user_options, "distance_measure", not_empty=True,
-            allowed_values=DISTANCE_MEASURES)
         assert kmeans_k >= 2 and kmeans_k < 100
 
-        jobname = "cluster"
-        cmd = cluster30.cluster30_file(
-            in_data.identifier,
-            (cluster_genes=="yes"), (cluster_arrays=="yes"), "kmeans",
-            distance=distance_metric, kmeans_k=kmeans_k, jobname=jobname)
+        x = clust.run_cluster30(
+            in_data.identifier, "kmeans", user_options, kmeans_k=kmeans_k)
+        cmd, cluster_files = x
         metadata["command"] = cmd
-
-        # Find the output files and name them appropriately.
-        cluster_files = cluster30._find_cluster_files(jobname)
-
+        
         opj = os.path.join
         out_cdt_file = opj(out_path, "signal.cdt")
         out_kag_file = opj(out_path, "array_cluster.kag")
@@ -59,7 +42,3 @@ class Module(AbstractModule):
 
     def name_outfile(self, antecedents, user_options):
         return "cluster"
-        #from Betsy import module_utils
-        #original_file = module_utils.get_inputid(antecedents.identifier)
-        #filename = 'cluster_file_' + original_file + '.cdt'
-        #return filename

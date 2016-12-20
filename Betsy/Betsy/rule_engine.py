@@ -1094,6 +1094,8 @@ def _write_parameter_file(
     params["module_name"] = module_name
     if not operator.isSequenceType(antecedents):
         antecedents = [antecedents]
+    # TODO:
+    # Should write out the attributes for each antecedent.
     ante = [(x.data.datatype.name, x.identifier) for x in antecedents]
     params["antecedents"] = ante
     params["out_attributes"] = out_attributes

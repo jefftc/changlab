@@ -1107,6 +1107,7 @@ def get_user_option(
     # not_empty means I will make sure the value is not an empty value.
     # required means the user must supply a value (even if default given).
     # allowed_values is a list of the allowed values of this option.
+    # If given, will only accept this value and empty string.
     # type should be a function that converts the type.
     import os
     
@@ -1114,11 +1115,15 @@ def get_user_option(
     value = user_options[name]
     if not_empty:
         assert value, "Empty user option: %s" % name
-    if allowed_values:
+    if value and allowed_values:
         assert value in allowed_values, "Invalid option for %s: %s" % (
             name, value)
-    if value and type is not None:
-        value = type(value)
+    if type is not None:
+        if value:
+            value = type(value)
+        else:
+            assert value == ""
+            value = None
     if value and check_file:
         assert os.path.exists(value), "File not found: %s" % value
     return value

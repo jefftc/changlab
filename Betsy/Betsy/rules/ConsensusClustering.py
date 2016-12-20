@@ -1,6 +1,6 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import GeneExpProcessing
+import SignalFile
 
 ConsensusClusteringFolder = DataType('ConsensusClusteringFolder',
                     AttributeDef("contents",BDT.CONTENTS,
@@ -24,7 +24,7 @@ all_data_types = [ConsensusClusteringFolder]
 all_modules=[
     ModuleNode(
         'consensusClustering',
-         GeneExpProcessing.SignalFile,ConsensusClusteringFolder,
+         SignalFile.SignalFile,ConsensusClusteringFolder,
          OptionDef('cc_kmax',5,help="number of kmax cluster(must be >1)"),
          OptionDef('cc_resampling_iter',20,help="number of resampling iterations"),
          OptionDef('cc_seed_value','12345',help="random number generator seed"),

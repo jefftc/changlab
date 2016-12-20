@@ -42,7 +42,7 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
-import GeneExpProcessing as GXP
+import SignalFile
 import NGSQC as QC
 
 YESNO = BDT.YESNO  # for convenience
@@ -85,8 +85,8 @@ RSEMResults = DataType(
         help="Align to the genome or transcriptome."),
     AttributeDef(
         "aligner", ["star", "bowtie1"], "star", "star"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified"),
+    #AttributeDef(
+    #    "contents", BDT.CONTENTS, "unspecified", "unspecified"),
     help="A folder of results from an rsem-calculate-expression analysis.",
     )
 
@@ -148,9 +148,9 @@ RNASeqUnprocessedSignalFile = DataType(
     AttributeDef(
         "logged", ["unknown", "no", "yes"], "unknown", "yes",
         help="logged or not"),
-    AttributeDef(
-        "contents", BDT.CONTENTS, "unspecified", "unspecified",
-        help="contents"),
+    #AttributeDef(
+    #    "contents", BDT.CONTENTS, "unspecified", "unspecified",
+    #    help="contents"),
     
     AttributeDef(
         "adapters_trimmed", YESNO, "no", "no",
@@ -227,11 +227,9 @@ all_modules = [
         RSEMResults,
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
-        #Constraint("rsem_indexed", MUST_BE, "yes", 3),
         Consequence("align_to", SET_TO_ONE_OF, ["genome", "transcriptome"]),
         # bowtie not implemented.
         Consequence("aligner", SET_TO, "star"),
@@ -498,7 +496,7 @@ all_modules = [
 
     ModuleNode(
         "rnasequnprocessedsignalfile_to_unprocessedsignalfile",
-        RNASeqUnprocessedSignalFile, GXP.UnprocessedSignalFile,
+        RNASeqUnprocessedSignalFile, SignalFile.UnprocessedSignalFile,
 
         Constraint(
             "format", CAN_BE_ANY_OF,
@@ -506,10 +504,10 @@ all_modules = [
         Consequence("format", SAME_AS_CONSTRAINT),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
         Consequence("preprocess", SAME_AS_CONSTRAINT),
-        Constraint("logged", CAN_BE_ANY_OF, ["unknown", "no", "yes"]),
+        Constraint("logged", CAN_BE_ANY_OF, ["no", "yes"]),
         Consequence("logged", SAME_AS_CONSTRAINT),
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Consequence("contents", SAME_AS_CONSTRAINT),
+        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
+        #Consequence("contents", SAME_AS_CONSTRAINT),
 
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
         Constraint("aligner", CAN_BE_ANY_OF, ["star", "tophat"]),

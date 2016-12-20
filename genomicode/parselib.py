@@ -274,6 +274,7 @@ def pretty_filesize(size):
 
 
 def linesplit(one_long_line, prefix1=0, prefixn=4, width=72):
+    # Return list of lines.
     lines = one_long_line.split("\n")
     all_lines = []
     for i in range(len(lines)):

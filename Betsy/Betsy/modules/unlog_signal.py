@@ -7,18 +7,16 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
-        """unlog the pcl file"""
         import arrayio
         from genomicode import binreg
 
         M = arrayio.read(antecedents.identifier)
-        assert binreg.is_logged_array_data(M), (
-            'the input file %s should be logged' % antecedents.identitifer)
-        
         for i in range(len(M._X)):
             for j in range(len(M._X[i])):
                 if M._X[i][j] is not None:
                     M._X[i][j] = 2 ** float(M._X[i][j])
+        #assert binreg.is_logged_array_data(M), (
+        #    'the input file %s should be logged' % antecedents.identitifer)
     
         f = file(outfile, 'w')
         arrayio.tab_delimited_format.write(M, f)

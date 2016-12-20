@@ -10,7 +10,9 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import config
+        from genomicode import parselib
         from Betsy import module_utils as mlib
+        from Betsy import bie3
 
         metadata = {}
 
@@ -31,13 +33,28 @@ class Module(AbstractModule):
             user_options, "genes_with_highest_var", type=int)
         assert not highest_var or (highest_var >= 1 and highest_var < 20000)
 
+        # Make a useful error message if no user options are
+        # specified.
+        # Find this module node.
+        x = network.nodes
+        x = [x for x in x if isinstance(x, bie3.ModuleNode)]
+        x = [x for x in x if x.name == "filter_and_threshold_genes"]
+        # This should not happen.
+        assert x, "Missing module node"
+        module_node = x[0]
+        # Print out each of the options.
+        msg = []
+        for i, x in enumerate(module_node.option_defs):
+            x = parselib.linesplit("%d.  %s.  %s" % (i+1, x.name, x.help))
+            msg.extend(x)
+        msg = "\n".join(msg)
         assert not (
             min_threshold is None and
             max_threshold is None and
             min_fold_change is None and
             min_delta is None and
             highest_var is None
-            ), "No criteria specified for filter_and_threshold."
+            ), "Please specify criteria for filter_and_threshold:\n%s" % msg
 
         #if min_threshold:
         #    metadata["min_threshold"] = min_threshold
@@ -71,7 +88,7 @@ class Module(AbstractModule):
         cmd = " ".join(map(str, cmd))
         cmd = "%s > %s" % (cmd, sq(outfile))
         parallel.sshell(cmd)
-        metadata["command"] = cmd
+        metadata["commands"] = [cmd]
 
         filelib.assert_exists_nz(outfile)
         return metadata

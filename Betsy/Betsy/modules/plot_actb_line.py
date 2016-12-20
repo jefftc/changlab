@@ -17,8 +17,10 @@ class Module(AbstractModule):
         lineplot = mlib.get_config("lineplot", which_assert_file=True)
 
         gene_names = [
-            "ACTB",
-            "TUBB",
+            "ACTB", 60,       # Human beta actin.
+            "TUBB", 203068,   # Human beta tubulin.
+            "Actb", 22461,    # Mouse beta actin.
+            "Tubb4a", 22153,  # Mouse beta tubulin.
             ]
 
         infile = in_data.identifier
@@ -26,11 +28,12 @@ class Module(AbstractModule):
         sq = parallel.quote
         cmd = [
             sq(lineplot),
-            "--gene_names", ",".join(gene_names),
+            "--gene_names", ",".join(map(str, gene_names)),
+            "--mar_bottom", 1.50,
             sq(infile),
             sq(outfile),
             ]
-        cmd = " ".join(cmd)
+        cmd = " ".join(map(str, cmd))
         parallel.sshell(cmd)
         metadata["commands"] = [cmd]
 
@@ -39,10 +42,6 @@ class Module(AbstractModule):
             
 
     def name_outfile(self, antecedents, user_options):
-        #from Betsy import module_utils
-        #original_file = module_utils.get_inputid(antecedents.identifier)
-        #filename = 'actb_plot' + original_file + '.png'
-        #return filename
         return "actb_plot.png"
 
 

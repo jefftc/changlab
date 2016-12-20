@@ -14,9 +14,9 @@ class Module(AbstractModule):
         in_data = antecedents
         
         num_features = 500
-        if 'num_features_value' in user_options:
-            num_features = int(user_options['num_features_value'])
-        assert num_features > 0, 'the num_features should be >0'
+        if 'num_first_genes' in user_options:
+            num_features = int(user_options['num_first_genes'])
+        assert num_features > 0, 'the num_features should be > 0'
         
         M = arrayio.read(in_data.identifier)
         M_c = M.matrix(range(0, num_features), None)
