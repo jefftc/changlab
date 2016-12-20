@@ -1,37 +1,46 @@
+# TODO: clean up this file.
 # Data Types:
 # ReferenceGenome
 # FullyIndexedReferenceGenome
-# SampleGroupFile
 # GTFGeneModel
-# ReadOrientation            # Contains orientation of reads
-# ReadStrandedness           # Contains strandedness of reads
-# 
+#
 # FastqFolder
 # FastaFolder
 # SamFolder
 # BamFolder
 # SaiFolder                  # from BWA Backtrack
 #
+# ReadOrientation            # Contains orientation of reads
+# ReadStrandedness           # Contains strandedness of reads
+#
+# SampleGroupFile
+#
 # RealignTargetFolder
 # RecalibrationReport
 #
+# TrimmomaticSummary
+# NumAlignedReads
+# AlignmentSummaryMetrics
 # Bowtie1AlignmentSummary
 # Bowtie2AlignmentSummary
-# TrimmomaticSummary
-# 
-# NumAlignedReads
-# DepthOfCoverage          # Average sequencing depth.
-# AlignmentCIGARFolder     # Summarizes each alignment.  CIGAR, edit distance
 # PerfectAlignmentSummary  # How many alignments have no mismatches
-#
+# AlignmentCIGARFolder     # Summarizes each alignment.  CIGAR, edit distance
+# DepthOfCoverage          # Average sequencing depth.
+# InsertSizeMetrics
+# DuplicationRate
 #
 # Modules:
 # is_fastq_folder_compressed
 # uncompress_fastq_folder
 # merge_reads
+# make_sample_fastq_folder
 # trim_adapters_trimmomatic
 # summarize_trimmomatic_trimming
 #
+# subtract_mouse_reads
+# extract_fasta_folder
+# 
+# index_reference_complete
 # is_reference_dict_added          dictionary
 # add_dict_to_reference
 # is_reference_samtools_indexed    Samtools
@@ -50,30 +59,33 @@
 # align_with_bwa_mem
 # convert_sai_to_sam_folder
 #
+# count_aligned_reads
+# summarize_alignment_cigar
+# summarize_perfect_alignments
+# calculate_coverage
+# 
 # infer_read_orientation
 # infer_read_strandedness
-# 
-# summarize_aligned_reads
-# calculate_coverage_old
-# 
+#
 # convert_sam_to_bam_folder
 # index_bam_folder
 # sort_bam_folder_by_coordinate
 # sort_bam_folder_by_name
 # sort_bam_folder_by_contig
-# 
+#
 # add_read_groups_to_bam_folder       GATK variant calling pipeline
+# add_md_tags_to_bam_folder
 # mark_duplicates_bam_folder
 # split_n_trim_bam_folder
 # create_realign_targets
 # realign_indels_bam_folder
+# make_base_recalibration_report
 # recalibrate_base_quality_score
+# 
+# calculate_insert_size_metrics
+# calculate_alignment_summary_metrics
+# count_read_duplication_rate
 
-
-# OBSOLETE:
-# Bowtie1IndexedGenome       # Move to file for alignment.
-# Bowtie2IndexedGenome
-# BWAIndexedGenome
 
 
 from Betsy.bie3 import *
@@ -108,49 +120,6 @@ SORTED = [x for x in SORT_ORDERS if x != "no"]
 ## STRANDED_NOT_UNKNOWN = [x for x in STRANDED if x != "unknown"]
 
 
-GTFGeneModel = DataType(
-    "GTFGeneModel",
-    #OptionDef(
-    #    "assembly", default="genome",
-    #    help="Optional name for the genome assembly, e.g. hg19",
-    #    ),
-    help="GTF file that contains the gene model.",
-    )
-
-
-ReadOrientation = DataType(
-    # How read pairs oriented towards each other.
-    # orientation =
-    #  single
-    #  paired_fr  FR  -> <-
-    #  paired_rf  RF  <- ->
-    #  paired_ff  FF  -> ->
-    "ReadOrientation",
-    AttributeDef(
-        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
-        help="For subtracting mouse reads from PDX models of FastqFolder"),
-    help="Contains information about orientation and strandedness of reads "
-    "(.json)."
-    )
-
-ReadStrandedness = DataType(
-    # Whether the first read (/1) aligns to the 5' end of the gene.
-    # stranded = 
-    #   unstranded     Can go on either strand.
-    #   firststrand    First read (/1) matches revcomp (stranded=reverse)
-    #   secondstrand   First read matches the transcript.
-
-    "ReadStrandedness",
-    AttributeDef(
-        "adapters_trimmed", ["yes", "no"], "no", "no",
-        help="Whether the adapters are trimmed."),
-    AttributeDef(
-        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
-        help="For subtracting mouse reads from PDX models of FastqFolder"),
-    help="Contains information about strandedness of reads (.json)."
-    )
-
-
 ReferenceGenome = DataType(
     "ReferenceGenome",
     # Should be AttributeDef.
@@ -171,44 +140,22 @@ ReferenceGenome = DataType(
     help="Should be FASTA file with reference genome.",
     )
 
+
 FullyIndexedReferenceGenome = DataType(
     "FullyIndexedReferenceGenome",
     help="Used only for indexing a new reference genome.",
     )
 
-SampleGroupFile = DataType(
-    "SampleGroupFile",
-    #AttributeDef(
-    #    "contents", BDT.CONTENTS,
-    #    "unspecified", "unspecified", help="contents"),
-    # Needed to prevent cycles.
-    AttributeDef(
-        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
-        help="For subtracting mouse reads from PDX models of FastqFolder"),
-    help="File that associates FastQ files with sample names and pairing "
-    "information.  It can be either an Excel file or a tab-delimited text "
-    "file with at least three columns.  These three columns should contain "
-    'headers "Filename", "Sample", and "Pair".  '
-    "The Filename column contains the name of the fastq file (without "
-    "any path information.  The Sample column contains the name of each "
-    "sample.  There may be duplicates in this column if multiple FastQ "
-    "files contain data for the same sample.  The Pair column should be "
-    'either "1" or "2" for mate pairs for paired-end sequencing, '
-    "or blank for single end sequencing."
+
+GTFGeneModel = DataType(
+    "GTFGeneModel",
+    #OptionDef(
+    #    "assembly", default="genome",
+    #    help="Optional name for the genome assembly, e.g. hg19",
+    #    ),
+    help="GTF file that contains the gene model.",
     )
 
-## FastqFile = DataType(
-##     "FastqFile",
-##     AttributeDef(
-##         "read", ["single", "pair", "pair1", "pair2"],
-##         "single", "single", help="single or pair read"),
-##     #AttributeDef(
-##     #    "ref", REFERENCE_GENOMES, "hg19", "hg19",
-##     #    help="ref species"),
-##     AttributeDef(
-##         "contents", BDT.CONTENTS,
-##         "unspecified", "unspecified", help="contents"),
-##     )
 
 FastqFolder = DataType(
     "FastqFolder",
@@ -238,15 +185,6 @@ FastqFolder = DataType(
         ),
     help="A folder containing FASTQ files."
     )
-
-
-#MouseSubtractedFastqFolder = DataType(
-#    "MouseSubtractedFastqFolder",
-#    AttributeDef(
-#        "adapters_trimmed", ["yes", "no"], "no", "no",
-#        help="Whether the adapters are trimmed."),
-#    )
-    
 
 
 FastaFolder = DataType(
@@ -289,92 +227,53 @@ SAM_ATTRIBUTES = [
         "is_subset", YESNO, "no", "no",
         help="Generate a small sample file with a limited number of reads."
         ),
-
-    #AttributeDef(
-    #    "ref", REFERENCE_GENOMES, "hg19", "hg19",
-    #    help="ref species"),
-    #AttributeDef(
-    #    "sample_type", ["RNA", "DNA"],
-    #    "RNA", "RNA", help="RNA or DNA type"),
     ]
 
 BAM_ATTRIBUTES = SAM_ATTRIBUTES + [
-    AttributeDef(
-        "indexed", ["yes", "no"], "no", "no",
-        ),
+    AttributeDef("indexed", YESNO, "no", "no"),
     AttributeDef("sorted", SORT_ORDERS, "no", "coordinate"),
     AttributeDef(
-        "duplicates_marked", ["yes", "no"], "no", "no",
+        "duplicates_marked", YESNO, "no", "no",
         help="mark duplicate or not"),
     AttributeDef(
-        "split_n_trim", ["yes", "no"], "no", "no",
+        "duplicates_filtered", YESNO, "no", "no",
+        help="Whether duplicates are filtered out of the BAM file."),
+    AttributeDef(
+        "split_n_trim", YESNO, "no", "no",
         help="Whether SplitNCigarReads has been applied."),
     AttributeDef(
-        "base_quality_recalibrated", ["yes", "no"], "no", "no",
+        "base_quality_recalibrated", YESNO, "no", "no",
         help="base quality score recalibration"),
     AttributeDef(
-        "indel_realigned", ["yes", "no"], "no", "no",
+        "indel_realigned", YESNO, "no", "no",
         help="realigned or not"),
     #AttributeDef(
-    #    "has_header", ["yes", "no"], "no", "yes",
+    #    "has_header", YESNO, "no", "yes",
     #    help="fix header or not"),
     AttributeDef(
-        "has_read_groups", ["yes", "no"], "no", "no",
+        "has_read_groups", YESNO, "no", "no",
         help="Whether the files contain read groups.",
         ),
     AttributeDef(
-        "has_md_tags", ["yes", "no"], "no", "no",
+        "has_md_tags", YESNO, "no", "no",
         help="Whether the files have MD tags.",
         ),
     ]
 
 
-## SamFile = DataType("SamFile", *SAM_ATTRIBUTES)
-## BamFile = DataType("BamFile", *BAM_ATTRIBUTES)
-
 SamFolder = DataType(
-    "SamFolder", *SAM_ATTRIBUTES, **{"help":"A folder containing SAM files."})
+    "SamFolder",
+    *SAM_ATTRIBUTES,
+    help="A folder containing SAM files."
+    )
+
 
 BamFolder = DataType(
-    "BamFolder", *BAM_ATTRIBUTES, **{"help":"A folder containing BAM files."})
-
-RealignTargetFolder = DataType(
-    "RealignTargetFolder",
-    AttributeDef(
-        "aligner", ALIGNERS, "unknown", "bowtie2",
-        help="Alignment algorithm."),
-    AttributeDef(
-        "duplicates_marked", YESNO, "no", "no",
-        help="Whether the duplicates are marked."),
-    AttributeDef(
-        "adapters_trimmed", YESNO, "no", "no",
-        help="Whether the reads in here have had adapters trimmed."),
-    AttributeDef(
-        "split_n_trim", YESNO, "no", "no",
-        help="Whether SplitNCigarReads has been applied."),
-    AttributeDef(
-        "sorted", SORT_ORDERS, "no", "no",
-        help="Whether SplitNCigarReads has been applied."),
+    "BamFolder",
+    *BAM_ATTRIBUTES,
+    help="A folder containing BAM files."
     )
 
-RecalibrationReport = DataType(
-    "RecalibrationReport",
-    AttributeDef(
-        "aligner", ALIGNERS, "unknown", "bowtie2",
-        help="Alignment algorithm."),
-    AttributeDef(
-        "duplicates_marked", YESNO, "no", "no",
-        help="Whether the duplicates are marked."),
-    AttributeDef(
-        "adapters_trimmed", YESNO, "no", "no",
-        help="Whether the reads in here have had adapters trimmed."),
-    AttributeDef(
-        "split_n_trim", YESNO, "no", "no",
-        help="Whether SplitNCigarReads has been applied."),
-    AttributeDef(
-        "sorted", SORT_ORDERS, "no", "no",
-        help="Whether SplitNCigarReads has been applied."),
-    )
 
 SaiFolder = DataType(
     "SaiFolder",
@@ -407,14 +306,105 @@ SaiFolder = DataType(
     help=".sai file generated by BWA aln."
     )
 
-Bowtie1AlignmentSummary = DataType(
-    "Bowtie1AlignmentSummary",
-    help="Summarizes the alignment from bowtie1 (.xls file).",
+
+ReadOrientation = DataType(
+    # How read pairs oriented towards each other.
+    # orientation =
+    #  single
+    #  paired_fr  FR  -> <-
+    #  paired_rf  RF  <- ->
+    #  paired_ff  FF  -> ->
+    "ReadOrientation",
+    AttributeDef(
+        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        help="For subtracting mouse reads from PDX models of FastqFolder"),
+    help="Contains information about orientation and strandedness of reads "
+    "(.json)."
     )
 
-Bowtie2AlignmentSummary = DataType(
-    "Bowtie2AlignmentSummary",
-    help="Summarizes the alignment from bowtie2 (.xls file).",
+
+ReadStrandedness = DataType(
+    # Whether the first read (/1) aligns to the 5' end of the gene.
+    # stranded = 
+    #   unstranded     Can go on either strand.
+    #   firststrand    First read (/1) matches revcomp (stranded=reverse)
+    #   secondstrand   First read matches the transcript.
+
+    "ReadStrandedness",
+    AttributeDef(
+        "adapters_trimmed", ["yes", "no"], "no", "no",
+        help="Whether the adapters are trimmed."),
+    AttributeDef(
+        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        help="For subtracting mouse reads from PDX models of FastqFolder"),
+    help="Contains information about strandedness of reads (.json)."
+    )
+
+
+SampleGroupFile = DataType(
+    "SampleGroupFile",
+    #AttributeDef(
+    #    "contents", BDT.CONTENTS,
+    #    "unspecified", "unspecified", help="contents"),
+    # Needed to prevent cycles.
+    AttributeDef(
+        "mouse_reads_subtracted", ["yes", "no"], "no", "no",
+        help="For subtracting mouse reads from PDX models of FastqFolder"),
+    help="File that associates FastQ files with sample names and pairing "
+    "information.  It can be either an Excel file or a tab-delimited text "
+    "file with at least three columns.  These three columns should contain "
+    'headers "Filename", "Sample", and "Pair".  '
+    "The Filename column contains the name of the fastq file (without "
+    "any path information.  The Sample column contains the name of each "
+    "sample.  There may be duplicates in this column if multiple FastQ "
+    "files contain data for the same sample.  The Pair column should be "
+    'either "1" or "2" for mate pairs for paired-end sequencing, '
+    "or blank for single end sequencing."
+    )
+
+
+RealignTargetFolder = DataType(
+    "RealignTargetFolder",
+    AttributeDef(
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
+    AttributeDef(
+        "duplicates_marked", YESNO, "no", "no",
+        help="Whether the duplicates are marked."),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the reads in here have had adapters trimmed."),
+    AttributeDef(
+        "split_n_trim", YESNO, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
+    AttributeDef(
+        "sorted", SORT_ORDERS, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
+    )
+
+
+RecalibrationReport = DataType(
+    "RecalibrationReport",
+    AttributeDef(
+        "aligner", ALIGNERS, "unknown", "bowtie2",
+        help="Alignment algorithm."),
+    AttributeDef(
+        "duplicates_marked", YESNO, "no", "no",
+        help="Whether the duplicates are marked."),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the reads in here have had adapters trimmed."),
+    AttributeDef(
+        "split_n_trim", YESNO, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
+    AttributeDef(
+        "sorted", SORT_ORDERS, "no", "no",
+        help="Whether SplitNCigarReads has been applied."),
+    )
+
+TrimmomaticSummary = DataType(
+    "TrimmomaticSummary",
+    help="Summarizes the results from trimmomatic in an Excel .xls file.",
     )
 
 NumAlignedReads = DataType(
@@ -426,6 +416,32 @@ NumAlignedReads = DataType(
         "aligner", ALIGNERS, "unknown", "bowtie2",
         help="Alignment algorithm."),
     help="Count the number of aligned reads (.xls file).",
+    )
+
+AlignmentSummaryMetrics = DataType(
+    "AlignmentSummaryMetrics",
+    help="Picard CollectAlignmentSummaryMetrics.  Saves a directory of files.",
+    )
+
+Bowtie1AlignmentSummary = DataType(
+    "Bowtie1AlignmentSummary",
+    help="Summarizes the alignment from bowtie1 (.xls file).",
+    )
+
+Bowtie2AlignmentSummary = DataType(
+    "Bowtie2AlignmentSummary",
+    help="Summarizes the alignment from bowtie2 (.xls file).",
+    )
+
+PerfectAlignmentSummary = DataType(
+    "PerfectAlignmentSummary",
+    AttributeDef(
+        "mouse_reads_subtracted", YESNO, "no", "no",
+        help="For subtracting mouse reads from PDX models of FastqFolder"),
+    AttributeDef(
+        "adapters_trimmed", YESNO, "no", "no",
+        help="Whether the adapters are trimmed."),
+    help="Summarizes the fraction of perfect alignments (.txt file).",
     )
 
 AlignmentCIGARFolder = DataType(
@@ -440,19 +456,11 @@ AlignmentCIGARFolder = DataType(
     "(folder of .txt file).",
     )
 
-PerfectAlignmentSummary = DataType(
-    "PerfectAlignmentSummary",
-    AttributeDef(
-        "mouse_reads_subtracted", YESNO, "no", "no",
-        help="For subtracting mouse reads from PDX models of FastqFolder"),
-    AttributeDef(
-        "adapters_trimmed", YESNO, "no", "no",
-        help="Whether the adapters are trimmed."),
-    help="Summarizes the fraction of perfect alignments (.txt file).",
-    )
-
 DepthOfCoverage = DataType(
     "DepthOfCoverage",
+    AttributeDef(
+        "duplicates_filtered", YESNO, "no", "no",
+        help="Whether duplicates are filtered out."),
     help="Count the average coverage.  Saves a directory of files.",
     )
 
@@ -461,41 +469,40 @@ InsertSizeMetrics = DataType(
     help="Look at insert sizes of DNA-Seq.  Saves a directory of files.",
     )
 
-AlignmentSummaryMetrics = DataType(
-    "AlignmentSummaryMetrics",
-    help="Picard CollectAlignmentSummaryMetrics.  Saves a directory of files.",
-    )
-
-TrimmomaticSummary = DataType(
-    "TrimmomaticSummary",
-    help="Summarizes the results from trimmomatic in an Excel .xls file.",
+ReadDuplicationRate = DataType(
+    "ReadDuplicationRate",
+    help="Summarizes the rate of duplicates in a BAM file.",
     )
 
 all_data_types = [
-    ReadOrientation,
-    ReadStrandedness,
     ReferenceGenome,
     FullyIndexedReferenceGenome,
-    SampleGroupFile,
+    GTFGeneModel,
+    
     FastqFolder,
+    FastaFolder
     SamFolder,
     BamFolder,
     SaiFolder,
-    GTFGeneModel,
+    
+    ReadOrientation,
+    ReadStrandedness,
+    
+    SampleGroupFile,
 
     RealignTargetFolder,
     RecalibrationReport,
     
+    TrimmomaticSummary,
+    NumAlignedReads,
+    AlignmentSummaryMetrics,
     Bowtie1AlignmentSummary,
     Bowtie2AlignmentSummary,
-    TrimmomaticSummary,
-    
-    NumAlignedReads,
-    DepthOfCoverage,
-    AlignmentCIGARFolder,
     PerfectAlignmentSummary,
+    AlignmentCIGARFolder,
+    DepthOfCoverage,
     InsertSizeMetrics,
-    AlignmentSummaryMetrics,
+    ReadDuplicationRate,
     ]
 
 all_modules = [
@@ -504,8 +511,6 @@ all_modules = [
         FastqFolder, FastqFolder,
         Constraint("compressed", MUST_BE, "unknown"),
         Consequence("compressed", BASED_ON_DATA, COMPRESSION_NOT_UNKNOWN),
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
 
         # Optimization: Don't check when is_subset=yes.  is_subset is
         # created by the system, and will never be in a compressed
@@ -518,8 +523,6 @@ all_modules = [
         FastqFolder, FastqFolder,
         Constraint("compressed", CAN_BE_ANY_OF, ["gz", "bz2", "xz"]),
         Consequence("compressed", SET_TO, "no"),
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         
         # Optimization: Don't uncompress when is_subset=yes.
         # is_subset is created by the system, and will never be in a
@@ -535,17 +538,10 @@ all_modules = [
         Consequence("reads_merged", SET_TO, "yes"),
         Constraint("compressed", CAN_BE_ANY_OF, ["no", "gz", "bz2", "xz"], 0),
         Consequence("compressed", SET_TO, "no"),
-        #Constraint("compressed", MUST_BE, "no", 0),
-        #Consequence("compressed", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Constraint("contents", SAME_AS, 0, 1),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         # Bug: why does this cause the RSEM pipeline to not work?
         #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION, 1),
 
@@ -554,39 +550,6 @@ all_modules = [
         # state.
         Constraint("is_subset", MUST_BE, "no"),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        ),
-    ## ModuleNode(
-    ##     "check_orientation",
-    ##     [FastqFolder, SampleGroupFile, ReferenceGenome], FastqFolder,
-    ##     #[SampleGroupFile, BamFolder, ReferenceGenome], SampleGroupFile,
-    ##     Constraint("orientation", MUST_BE, "unknown", 0),
-    ##     Consequence("orientation", BASED_ON_DATA, ORIENTATION_NOT_UNKNOWN),
-    ##     Constraint("compressed", MUST_BE, "no", 0),
-    ##     Consequence("compressed", SAME_AS_CONSTRAINT),
-    ##     Constraint("reads_merged", MUST_BE, "yes", 0),
-    ##     Consequence("reads_merged", SAME_AS_CONSTRAINT),
-    ##     Constraint("bowtie2_indexed", MUST_BE, "yes", 2),
-    ##     Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
-    ##     Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
-    ##     Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
-    ##     ),
-    ModuleNode(
-        "trim_adapters_trimmomatic",
-        [FastqFolder, SampleGroupFile], FastqFolder,
-        OptionDef(
-            "adapters_fasta", 
-            help="Full path to FASTA file containing adapters to trim.",
-            ),
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Constraint("contents", SAME_AS, 0, 1),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
-        Constraint("adapters_trimmed", MUST_BE, "no", 0),
-        Consequence("adapters_trimmed", SET_TO, "yes"),
-        Constraint("compressed", MUST_BE, "no", 0),
-        Consequence("compressed", SAME_AS_CONSTRAINT),
-        Constraint("reads_merged", MUST_BE, "yes", 0),
-        Consequence("reads_merged", SAME_AS_CONSTRAINT),
-        help="Trim adapters.  Files should be merged.",
         ),
     ModuleNode(
         "make_sample_fastq_folder",
@@ -605,11 +568,25 @@ all_modules = [
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         Constraint("reads_merged", MUST_BE, "yes"),
         Consequence("reads_merged", SAME_AS_CONSTRAINT),
         help="Make a small sample Fastq folder.",
+        ),
+    ModuleNode(
+        "trim_adapters_trimmomatic",
+        [FastqFolder, SampleGroupFile], FastqFolder,
+        OptionDef(
+            "adapters_fasta", 
+            help="Full path to FASTA file containing adapters to trim.",
+            ),
+        Constraint("adapters_trimmed", MUST_BE, "no", 0),
+        Consequence("adapters_trimmed", SET_TO, "yes"),
+        Constraint("compressed", MUST_BE, "no", 0),
+        Consequence("compressed", SAME_AS_CONSTRAINT),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Consequence("reads_merged", SAME_AS_CONSTRAINT),
+        help="Trim adapters.  Files should be merged.",
         ),
     ModuleNode(
         "summarize_trimmomatic_trimming",
@@ -624,36 +601,32 @@ all_modules = [
         # with the FASTQ files.
         ),
     
-    ## ModuleNode(
-    ##     "is_fastq_folder",
-    ##     RNASeqFile, RNASeqFile,
-    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-    ##     Constraint("format_type", MUST_BE, "unknown"),
-    ##     Consequence("contents", SAME_AS_CONSTRAINT),
-    ##     Consequence(
-    ##         "format_type", BASED_ON_DATA, ["not_fastqfolder", "fastqfolder"]),
-    ##     help=("extract rna files with different format")
-    ##     ),
-    ## ModuleNode(
-    ##     "is_sam_folder",
-    ##     RNASeqFile, RNASeqFile,
-    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-    ##     Constraint("format_type", MUST_BE, "not_fastqfolder"),
-    ##     Consequence("contents", SAME_AS_CONSTRAINT),
-    ##     Consequence(
-    ##         "format_type", BASED_ON_DATA, ["not_samfolder", "samfolder"]),
-    ##     help=("extract rna files with different format")
-    ##     ),
-    ## ModuleNode(
-    ##     "is_bam_folder",
-    ##     RNASeqFile, RNASeqFile,
-    ##     Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-    ##     Constraint("format_type", MUST_BE, "not_samfolder"),
-    ##     Consequence("contents", SAME_AS_CONSTRAINT),
-    ##     Consequence(
-    ##         "format_type", BASED_ON_DATA, ["not_bamfolder", "bamfolder"]),
-    ##     help=("extract rna files with different format")
-    ##     ),
+    ModuleNode(
+        "subtract_mouse_reads",
+        [FastqFolder, SampleGroupFile, AlignmentCIGARFolder],
+        FastqFolder,
+        OptionDef(
+            "num_mismatches", default=0, help="Remove all reads with <= "
+            "this number of mismatches against the mouse genome.",
+            ),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
+        Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
+        Consequence("mouse_reads_subtracted", SET_TO, "yes"),
+        Constraint("compressed", MUST_BE, "no", 0),
+        Consequence("compressed", SAME_AS_CONSTRAINT),
+        Constraint("reads_merged", MUST_BE, "yes", 0),
+        Consequence("reads_merged", SAME_AS_CONSTRAINT),
+        Constraint("adapters_trimmed", MUST_BE, "yes", 0),
+        Constraint("adapters_trimmed", SAME_AS, 0, 2),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
+        ),
+
+    ModuleNode(
+        "extract_fasta_folder",
+        BamFolder, FastaFolder,
+        Consequence("compressed", SET_TO, "no"),
+        Consequence("reads_merged", SET_TO, "yes"),
+        ),
 
     ModuleNode(
         "index_reference_complete",
@@ -705,10 +678,6 @@ all_modules = [
     ModuleNode(
         "index_reference_bowtie1",
         ReferenceGenome, ReferenceGenome,
-        #OptionDef(
-        #    "assembly", default="genome",
-        #    help="Optional name for the genome assembly, e.g. hg19",
-        #    ),
         Constraint("bowtie1_indexed", MUST_BE, "no"),
         Consequence("bowtie1_indexed", SET_TO, "yes"),
         ),
@@ -721,16 +690,8 @@ all_modules = [
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("bowtie1_indexed", MUST_BE, "yes", 3),
-        #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
-        #Consequence("orientation", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-
-        
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Constraint("contents", SAME_AS, 0, 1),
-        #Consequence("contents", SAME_AS_CONSTRAINT, 0),
         Consequence("aligner", SET_TO, "bowtie1"),
         help="Align to a reference genome with bowtie.",
         ),
@@ -754,10 +715,6 @@ all_modules = [
     ModuleNode(
         "index_reference_bowtie2",
         ReferenceGenome, ReferenceGenome,
-        #OptionDef(
-        #    "assembly", default="genome",
-        #    help="Optional name for the genome assembly, e.g. hg19",
-        #    ),
         Constraint("bowtie2_indexed", MUST_BE, "no"),
         Consequence("bowtie2_indexed", SET_TO, "yes"),
         ),
@@ -765,32 +722,17 @@ all_modules = [
         "align_with_bowtie2",
         [FastqFolder, SampleGroupFile, ReadOrientation, ReferenceGenome],
         BamFolder,
-        #OptionDef(
-        #    "orientation", default="fr",
-        #    help="Which orientation.  See bowtie2 manual.  "
-        #    "Values: fr, rf, ff.",
-        #    ),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
-        #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Constraint("bowtie2_indexed", MUST_BE, "yes", 3),
-        #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
-        #Consequence("orientation", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
-        
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Constraint("contents", SAME_AS, 0, 1),
-        #Consequence("contents", SAME_AS_CONSTRAINT, 0),
         Consequence("aligner", SET_TO, "bowtie2"),
-        #Consequence("ref", SET_TO_ONE_OF, ["human", "mouse"]),
         help="Align to a reference genome with bowtie 2.",
         ),
     ModuleNode(
@@ -814,10 +756,6 @@ all_modules = [
     ModuleNode(
         "index_reference_bwa",
         ReferenceGenome, ReferenceGenome,
-        #OptionDef(
-        #    "assembly", default="genome",
-        #    help="Optional name for the genome assembly, e.g. hg19",
-        #    ),
         Constraint("bwa_indexed", MUST_BE, "no"),
         Consequence("bwa_indexed", SET_TO, "yes"),
         ),
@@ -829,29 +767,12 @@ all_modules = [
         
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("bwa_indexed", MUST_BE, "yes", 2),
-        #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
-        #Consequence("orientation", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
-
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Constraint("contents", SAME_AS, 0, 1),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
-        #Consequence("aligner", SET_TO, "bwa"),
-        #Consequence("sorted", SET_TO, "no"),
-        #Consequence("duplicates_marked", SET_TO, "no"),
-        #Consequence("recalibration", SET_TO, "no"),
-        #Consequence("has_header", SET_TO, "no"),
-        #Constraint("ref", CAN_BE_ANY_OF, ["hg18", "hg19", "mm9", "dm3"]),
-        #Consequence("ref", SAME_AS_CONSTRAINT),
-        #help="generate algiment in SaiFile to SamFile"
         help="bwa aln for reads < 70 bp.  Generally not used anymore.",
         ),
     ModuleNode(
@@ -860,22 +781,13 @@ all_modules = [
         BamFolder,
 
         # bwa mem figures out the orientation itself.
-        #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 1),
         Constraint("compressed", MUST_BE, "no", 0),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        #Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("bwa_indexed", MUST_BE, "yes", 2),
-        #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
-        #Consequence("orientation", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("is_subset", MUST_BE, "no", 0),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Constraint("contents", SAME_AS, 0, 1),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("aligner", SET_TO, "bwa_mem"),
         help="bwa mem for reads >= 70 bp.  Now preferred",
         ),
@@ -889,26 +801,15 @@ all_modules = [
         Constraint("adapters_trimmed", MUST_BE, "yes", 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("bwa_indexed", MUST_BE, "yes", 4),
-        #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN, 0),
-        #Constraint("orientation", SAME_AS, 0, 1),
-        #Consequence("orientation", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("is_subset", MUST_BE, "no", 0),
         Constraint("is_subset", SAME_AS, 0, 1),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT, 0),
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Constraint("contents", SAME_AS, 0, 1),
-        #Constraint("contents", SAME_AS, 0, 3),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         Consequence("aligner", SET_TO, "bwa_backtrack"),
         help="Convert bwa's .sai alignments into .sam format.",
         ),
-
     ModuleNode(
         "count_aligned_reads",
         [FastqFolder, SampleGroupFile, BamFolder], NumAlignedReads,
@@ -951,7 +852,6 @@ all_modules = [
         Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         help="Summarize the fraction of reads with perfect alignments.",
@@ -974,31 +874,21 @@ all_modules = [
             ),
         Constraint("sorted", MUST_BE, "coordinate", 0),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
+        Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
         help="Summarize the distribution of coverage across the genome.",
         ),
     ModuleNode(
         "convert_sam_to_bam_folder",
         SamFolder, BamFolder,
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
         Consequence("aligner", SAME_AS_CONSTRAINT),
-        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO),
+        Constraint("mouse_reads_subtracted", MUST_BE, "no"),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
-        #Constraint("orientation", CAN_BE_ANY_OF, ORIENTATION_NOT_UNKNOWN),
-        #Consequence("orientation", SAME_AS_CONSTRAINT),
         Constraint("is_subset", CAN_BE_ANY_OF, YESNO),
         Consequence("is_subset", SAME_AS_CONSTRAINT),
-        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
-        
-        Consequence("has_read_groups", SET_TO, "no"),
-        Consequence("sorted", SET_TO, "no"),
-        Consequence("duplicates_marked", SET_TO, "no"),
-        Consequence("base_quality_recalibrated", SET_TO, "no"),
-        Consequence("indel_realigned", SET_TO, "no"),
-        Consequence("has_md_tags", SET_TO, "no"),
         #help="Convert SAM to BAM files.",
         ),
     ModuleNode(
@@ -1020,14 +910,6 @@ all_modules = [
         Consequence("indexed", SAME_AS_CONSTRAINT),
         Constraint("sorted", CAN_BE_ANY_OF, ["no"], 0),
         Consequence("sorted", SET_TO, "coordinate"),
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
-        #Constraint("duplicates_marked", MUST_BE, "no"),
-        #Constraint("recalibrated", MUST_BE, "no"),
-        #Constraint("has_header", MUST_BE, "no"),
-        #Consequence("has_header", SAME_AS_CONSTRAINT),
-        #Consequence("recalibrated", SAME_AS_CONSTRAINT),
-        #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         ),
     ModuleNode(
         "sort_bam_folder_by_name",
@@ -1042,8 +924,6 @@ all_modules = [
     ModuleNode(
         "sort_bam_folder_by_contig",
         [BamFolder, ReferenceGenome], BamFolder,
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("sorted", CAN_BE_ANY_OF, ["no", "name", "coordinate"]),
         Constraint("indexed", MUST_BE, "no"),
         Consequence("sorted", SET_TO, "contig"),
@@ -1067,7 +947,6 @@ all_modules = [
         # Needs to be sorted or will run impossibly slow.
         Constraint("sorted", MUST_BE, "coordinate"),
         Consequence("sorted", SAME_AS_CONSTRAINT),
-        #Constraint("indexed", MUST_BE, "yes"),
         Consequence("indexed", SET_TO, "no"),
         ),
     ModuleNode(
@@ -1075,6 +954,8 @@ all_modules = [
         BamFolder, BamFolder,
         Constraint("duplicates_marked", MUST_BE, "no"),
         Consequence("duplicates_marked", SET_TO, "yes"),
+        Constraint("duplicates_filtered", MUST_BE, "no"),
+        Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
         Constraint("sorted", MUST_BE, "coordinate"),
         Consequence("sorted", SAME_AS_CONSTRAINT),
         Constraint("has_read_groups", MUST_BE, "yes"),
@@ -1123,7 +1004,8 @@ all_modules = [
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
-        #Constraint("base_recalibrated", MUST_BE, "no", 0),
+        Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("sorted", MUST_BE, "coordinate"),
         Consequence("sorted", SAME_AS_CONSTRAINT),
@@ -1156,10 +1038,11 @@ all_modules = [
             ),
         Constraint("has_read_groups", MUST_BE, "yes", 0),
         Consequence("has_read_groups", SAME_AS_CONSTRAINT),
-        Constraint("duplicates_marked", CAN_BE_ANY_OF, ["yes", "no"], 0),
+        Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("duplicates_marked", SAME_AS, 0, 2),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
-        #Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
         Constraint("indel_realigned", MUST_BE, "no", 0),
         Consequence("indel_realigned", SET_TO, "yes"),
         # create_realign_targets requires sort order to be "coordinate"
@@ -1207,6 +1090,8 @@ all_modules = [
         Consequence("aligner", SAME_AS_CONSTRAINT),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO, 0),
@@ -1227,10 +1112,7 @@ all_modules = [
         
         Constraint("base_quality_recalibrated", MUST_BE, "no", 0),
         Consequence("base_quality_recalibrated", SET_TO, "yes"),
-        #Constraint("sorted", MUST_BE, "contig", 0),
         
-        #Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
-        #Consequence("contents", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("adapters_trimmed", SAME_AS, 0, 2),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
@@ -1247,9 +1129,10 @@ all_modules = [
         Constraint("indel_realigned", MUST_BE, "yes", 0),
         Consequence("indel_realigned", SAME_AS_CONSTRAINT),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("duplicates_marked", MUST_BE, "yes", 0),
         Constraint("duplicates_marked", SAME_AS, 0, 2),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
+        Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO, 0),
+        Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS, 0),
         Constraint("aligner", SAME_AS, 0, 2),
         Consequence("aligner", SAME_AS_CONSTRAINT),
@@ -1261,38 +1144,14 @@ all_modules = [
         ),
 
     ModuleNode(
-        "subtract_mouse_reads",
-        [FastqFolder, SampleGroupFile, AlignmentCIGARFolder],
-        FastqFolder,
-        OptionDef(
-            "num_mismatches", default=0, help="Remove all reads with <= "
-            "this number of mismatches against the mouse genome.",
-            ),
-        Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        Constraint("mouse_reads_subtracted", SAME_AS, 0, 2),
-        Consequence("mouse_reads_subtracted", SET_TO, "yes"),
-        Constraint("compressed", MUST_BE, "no", 0),
-        Consequence("compressed", SAME_AS_CONSTRAINT),
-        Constraint("reads_merged", MUST_BE, "yes", 0),
-        Consequence("reads_merged", SAME_AS_CONSTRAINT),
-        Constraint("adapters_trimmed", MUST_BE, "yes", 0),
-        Constraint("adapters_trimmed", SAME_AS, 0, 2),
-        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
-        ),
-
-    ModuleNode(
         "infer_read_orientation",
         [FastqFolder, SampleGroupFile, ReferenceGenome], ReadOrientation,
         Constraint("is_subset", MUST_BE, "yes", 0),
         Constraint("compressed", MUST_BE, "no", 0),
-        #Consequence("compressed", SAME_AS_CONSTRAINT),
         Constraint("reads_merged", MUST_BE, "yes", 0),
-        #Consequence("reads_merged", SAME_AS_CONSTRAINT),
         Constraint("bowtie2_indexed", MUST_BE, "yes", 2),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint("mouse_reads_subtracted", SAME_AS, 0, 1),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         ),
 
@@ -1306,16 +1165,8 @@ all_modules = [
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("mouse_reads_subtracted", MUST_BE, "no", 0),
-        #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("mouse_reads_subtracted", SAME_AS_CONSTRAINT),
         Constraint("is_subset", MUST_BE, "yes", 0),
-        ),
-
-    ModuleNode(
-        "extract_fasta_folder",
-        BamFolder, FastaFolder,
-        Consequence("compressed", SET_TO, "no"),
-        Consequence("reads_merged", SET_TO, "yes"),
         ),
 
     ModuleNode(
@@ -1324,6 +1175,7 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("indexed", CAN_BE_ANY_OF, YESNO),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO),
+        Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
         ),
@@ -1334,21 +1186,22 @@ all_modules = [
         Constraint("sorted", MUST_BE, "coordinate"),
         Constraint("indexed", CAN_BE_ANY_OF, YESNO),
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO),
+        Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO),
         Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO),
         Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
         ),
 
-    ## ModuleNode(
-    ##     "align_sample_fastq_folder",
-    ##     [FastqFolder, SampleGroupFile, ReferenceGenome], SamFolder,
-    ##     Constraint("compressed", MUST_BE, "no", 0),
-    ##     Constraint("reads_merged", MUST_BE, "yes", 0),
-    ##     Constraint("is_subset", MUST_BE, "yes", 0),
-    ##     Consequence("is_subset", SAME_AS_CONSTRAINT),
-    ##     Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
-    ##     Constraint("bowtie2_indexed", MUST_BE, "yes", 2),
-    ##     Consequence("aligner", SET_TO, "bowtie2"),
-    ##     help="Align to a reference genome with bowtie 2.",
-    ##     ),
-    
+    ModuleNode(
+        "count_read_duplication_rate",
+        BamFolder, ReadDuplicationRate,
+        Constraint("indexed", CAN_BE_ANY_OF, YESNO),
+        Constraint("sorted", CAN_BE_ANY_OF, SORT_ORDERS),
+        Constraint("duplicates_marked", MUST_BE, "yes"),
+        Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO),
+        Constraint("base_quality_recalibrated", CAN_BE_ANY_OF, YESNO),
+        Constraint("indel_realigned", CAN_BE_ANY_OF, YESNO),
+        Constraint("has_read_groups", CAN_BE_ANY_OF, YESNO),
+        Constraint("has_md_tags", CAN_BE_ANY_OF, YESNO),
+        Constraint("aligner", CAN_BE_ANY_OF, ALIGNERS),
+        ),
     ]
