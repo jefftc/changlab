@@ -1,4 +1,3 @@
-# TODO: clean up this file.
 # Data Types:
 # ReferenceGenome
 # FullyIndexedReferenceGenome
@@ -492,7 +491,7 @@ all_data_types = [
     GTFGeneModel,
     
     FastqFolder,
-    FastaFolder
+    FastaFolder,
     SamFolder,
     BamFolder,
     SaiFolder,
@@ -1037,7 +1036,7 @@ all_modules = [
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO, 0),
-        Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
+        #Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
         Constraint("indexed", MUST_BE, "yes", 0),
         Constraint("sorted", MUST_BE, "coordinate"),
         Consequence("sorted", SAME_AS_CONSTRAINT),
@@ -1123,7 +1122,7 @@ all_modules = [
         Constraint("duplicates_marked", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("duplicates_marked", SAME_AS_CONSTRAINT),
         Constraint("duplicates_filtered", CAN_BE_ANY_OF, YESNO, 0),
-        Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
+        #Consequence("duplicates_filtered", SAME_AS_CONSTRAINT),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Constraint("split_n_trim", CAN_BE_ANY_OF, YESNO, 0),
