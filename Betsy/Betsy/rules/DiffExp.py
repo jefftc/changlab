@@ -3,7 +3,6 @@ import BasicDataTypes as BDT
 import SignalFile
 import GOAnalysis
 import GSEAAnalysis
-#import Clustering
 import ExpressionVisualization as EV
 
 
@@ -14,9 +13,6 @@ DiffExprFile = DataType(
     AttributeDef(
         "de_algorithm", DE_ALGORITHM, "fold_change", "fold_change", 
         help="Which algorithm used to calculate differential expression."),
-    #AttributeDef(
-    #    "contents", BDT.CONTENTS, 'diff_unspecified', 'diff_unspecified',
-    #    help='contents'),
     help="Differential expression result file")
 
 DiffReportFile = DataType(

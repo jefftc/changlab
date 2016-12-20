@@ -971,24 +971,31 @@ class ModuleNode:
         in_datatype = in_datatypes[i]
 
         assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF, SAME_AS]
-        if constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]:
-            assert in_datatype.is_valid_attribute_name(constraint.name), \
+        if constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]: 
+           assert in_datatype.is_valid_attribute_name(constraint.name), \
                 ("Module %r: Invalid attribute %r for datatype %r." %
                  (name, constraint.name, in_datatype.name))
-            assert in_datatype.is_valid_attribute_value(
+           assert in_datatype.is_valid_attribute_value(
                 constraint.name, constraint.arg1), \
                 ("Module %r: Invalid value %r for attribute %r." %
                  (name, constraint.arg1, constraint.name))
         elif constraint.behavior == SAME_AS:
             # Make sure the datatype has this attribute.
             dt = in_datatypes[constraint.arg1]
-            assert dt.is_valid_attribute_name(constraint.name)
+            assert dt.is_valid_attribute_name(constraint.name), (
+                "Module %r: %r is not a known attribute for datatype %r" %
+                (name, constraint.name, dt.name))
+            dt2 = in_datatypes[constraint.input_index]
+            assert dt2.is_valid_attribute_name(constraint.name), (
+                "Module %r: %r is not a known attribute for datatype %r" %
+                (name, constraint.name, dt2.name))
             # Make sure value can be resolved.
             assert len(in_datatypes) > 1, (
                 "Module %r: SAME_AS constraint requires at least two input "
                 "datatypes." % name)
             const = _resolve_constraint(constraint, constraints)
             assert const.behavior in [MUST_BE, CAN_BE_ANY_OF]
+            
             #assert constraint.arg1 < len(in_datatypes)
             #assert constraint.arg1 != constraint.input_index
             ## Make sure there is a MUST_BE or CAN_BE_ANY_OF constraint
@@ -7102,7 +7109,7 @@ def _resolve_constraint(constraint, all_constraints):
     # If this should be the same as another constraint, then check the
     # other constraint.
     # CONSEQUENCE   NAME
-    # CONSTRAINT 1  NAME  CAN_BE_AN_OF
+    # CONSTRAINT 1  NAME  CAN_BE_ANY_OF
     # CONSTRAINT 2  NAME  SAME_AS  1
     # CONSTRAINT 3  NAME  SAME_AS  2
     #
@@ -7118,9 +7125,14 @@ def _resolve_constraint(constraint, all_constraints):
         x = [x for x in all_constraints if x.name == const.name]
         x = [x for x in x if x.input_index == const.arg1]
         assert len(x) > 0, (
-            "%r SAME_AS %d, but datatype %d has no constraint on %r." %
-            (const.name, const.arg1, const.arg1, const.name))
-        assert len(x) == 1
+            "%r: %d SAME_AS %d, but datatype %d has no constraint on %r." %
+            (const.name, const.arg1, const.input_index,
+             const.arg1, const.name))
+        assert len(x) == 1, (
+            "%r: %d SAME_AS %d, "
+            "and datatype %d has multiple constraints on %r." %
+            (const.name, const.arg1, const.input_index,
+             const.arg1, const.name))
         const = x[0]
     return const
 

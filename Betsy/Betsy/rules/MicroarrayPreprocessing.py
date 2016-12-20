@@ -417,8 +417,8 @@ all_modules = [
         # PCAPlot (preprocessed).
         Constraint("contents", SAME_AS, 0, 3),
         Constraint("preprocess", SAME_AS, 0, 3),
-        Constraint("missing_algorithm", SAME_AS, 0, 3),
-        Constraint("filter_missing_values", SAME_AS, 0, 3),
+        #Constraint("missing_algorithm", SAME_AS, 0, 3),
+        #Constraint("filter_missing_values", SAME_AS, 0, 3),
         Constraint('quantile_norm', SAME_AS, 0, 3),
         Constraint('combat_norm', SAME_AS, 0, 3),
         Constraint('dwd_norm', SAME_AS, 0, 3),
@@ -426,7 +426,7 @@ all_modules = [
         Constraint('bfrm_norm', SAME_AS, 0, 3),
         Constraint('gene_center', SAME_AS, 0, 3),
         Constraint('gene_normalize', SAME_AS, 0, 3),
-        Constraint('gene_order', SAME_AS, 0, 3),
+        #Constraint('gene_order', SAME_AS, 0, 3),
         Constraint('annotate', SAME_AS, 0, 3),
         Constraint('relabel_sample', SAME_AS, 0, 3),
         Constraint('platform', SAME_AS, 0, 3),
@@ -444,8 +444,8 @@ all_modules = [
         # PcaPlot (No processing)
         Constraint("contents", SAME_AS, 0, 5),
         Constraint("preprocess", SAME_AS, 0, 5),
-        Constraint("missing_algorithm", SAME_AS, 0, 5),
-        Constraint("filter_missing_values", SAME_AS, 0, 5),
+        #Constraint("missing_algorithm", SAME_AS, 0, 5),
+        #Constraint("filter_missing_values", SAME_AS, 0, 5),
         Constraint('quantile_norm', MUST_BE, "no", 5),
         Constraint('combat_norm', MUST_BE, "no", 5),
         Constraint('dwd_norm', MUST_BE, "no", 5),
@@ -453,7 +453,7 @@ all_modules = [
         Constraint('bfrm_norm', MUST_BE, "no", 5),
         Constraint('gene_center', MUST_BE, "no", 5),
         Constraint('gene_normalize', MUST_BE, "no", 5),
-        Constraint('gene_order', SAME_AS, 0, 5),
+        #Constraint('gene_order', SAME_AS, 0, 5),
         Constraint('annotate', SAME_AS, 0, 5),
         Constraint('relabel_sample', SAME_AS, 0, 5),
         Constraint('platform', MUST_BE, "no", 5), 
@@ -493,41 +493,41 @@ all_modules = [
     ModuleNode(
         'do_complete_preprocessing_illumina',
         [
-            SignalFile.SignalFile,           #  0
-            EV.SignalDistributionBoxplot,    #  1
-            EV.ActbPlot,                     #  2
-            EV.HousekeepingPlot,             #  3
-            EV.PCAPlot,                      #  4   no normalization
-            EV.PCAPlot,                      #  5   normalized
-            EV.Heatmap,                      #  6   no normalization
-            EV.Heatmap,                      #  7   normalized
-            SignalFile.IlluminaControlFile,  #  8
-            EV.BiotinPlot,                   #  9
-            EV.IlluHybridizationProbePlot,   # 10
+            SignalFile.SignalFile,           #  0   no normalization
+            SignalFile.SignalFile,           #  1   normalized
+            EV.SignalDistributionBoxplot,    #  2
+            EV.ActbPlot,                     #  3   no normalization
+            EV.ActbPlot,                     #  4   normalized
+            EV.PCAPlot,                      #  5   no normalization
+            EV.PCAPlot,                      #  6   normalized
+            EV.Heatmap,                      #  7   no normalization
+            EV.Heatmap,                      #  8   normalized
+            SignalFile.IlluminaControlFile,  #  9
+            EV.HousekeepingPlot,             # 10
+            EV.BiotinPlot,                   # 11
+            EV.IlluHybridizationProbePlot,   # 12
             ],
         CompleteExpressionPreprocessing,
 
-        # SignalFile
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        # SignalFile (not normalized)
+        Constraint("logged", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("preprocess", MUST_BE, "illumina", 0),
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
+        Constraint("filter_missing_values", CAN_BE_ANY_OF, YESNO, 0),
         Constraint(
             "missing_algorithm", CAN_BE_ANY_OF,
             ["none", "median_fill", "zero_fill"], 0),
-        Constraint("filter_missing_values", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint('quantile_norm', CAN_BE_ANY_OF, YESNO, 0),
-        Constraint('combat_norm', CAN_BE_ANY_OF, YESNO, 0),
-        Constraint('dwd_norm', CAN_BE_ANY_OF, YESNO, 0),
-        Constraint('shiftscale_norm', CAN_BE_ANY_OF, YESNO, 0),
-        Constraint('bfrm_norm', CAN_BE_ANY_OF, YESNO, 0),
-        Constraint('gene_center', CAN_BE_ANY_OF, ['median', 'mean', 'no'], 0),
-        Constraint(
-            'gene_normalize', CAN_BE_ANY_OF,
-            ['variance', 'sum_of_squares', 'no'], 0),
-        Constraint("gene_order", CAN_BE_ANY_OF, BDT.GENE_ORDER),
-        #Constraint("annotate", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint("annotate", MUST_BE, "yes", 0),
+        Constraint('quantile_norm', MUST_BE, "no", 0),
+        Constraint('combat_norm', MUST_BE, "no", 0),
+        Constraint('dwd_norm', MUST_BE, "no", 0),
+        Constraint('shiftscale_norm', MUST_BE, "no", 0),
+        Constraint('bfrm_norm', MUST_BE, "no", 0),
+        Constraint('gene_center', MUST_BE, "no", 0),
+        Constraint('gene_normalize', MUST_BE, "no", 0),
+        Constraint("gene_order", CAN_BE_ANY_OF, BDT.GENE_ORDER, 0),
+        Constraint('annotate', CAN_BE_ANY_OF, YESNO, 0),
         Constraint("relabel_sample", CAN_BE_ANY_OF, YESNO, 0),
-        Constraint("platform", CAN_BE_ANY_OF, YESNO, 0),
+        Constraint("platform", CAN_BE_ANY_OF, ["no", "yes", 'u133A'], 0),
         Constraint('num_features', CAN_BE_ANY_OF, YESNO, 0),
         Constraint("filter_and_threshold", CAN_BE_ANY_OF, YESNO, 0),
         Constraint(
@@ -537,53 +537,82 @@ all_modules = [
             'duplicate_probe', CAN_BE_ANY_OF,
             ["no", "closest_probe", "high_var_probe"], 0),
         Constraint('group_fc', CAN_BE_ANY_OF, YESNO, 0),
-        #Constraint('logged', CAN_BE_ANY_OF, YESNO, 0),
-        Constraint('logged', MUST_BE, "yes", 0),
 
-        # SignalDistributionBoxplot
+        # SignalFile (normalized)
+        Constraint('logged', SAME_AS, 0, 1),
         Constraint("contents", SAME_AS, 0, 1),
         Constraint("preprocess", SAME_AS, 0, 1),
-        Constraint("logged", MUST_BE, "yes", 1),
-        Constraint('relabel_sample', SAME_AS, 0, 1),
+        Constraint("filter_missing_values", SAME_AS, 0, 1),
+        Constraint("missing_algorithm", SAME_AS, 0, 1),
+        Constraint('quantile_norm', CAN_BE_ANY_OF, YESNO, 1),
+        Constraint('combat_norm', CAN_BE_ANY_OF, YESNO, 1),
+        Constraint('dwd_norm', CAN_BE_ANY_OF, YESNO, 1),
+        Constraint('shiftscale_norm', CAN_BE_ANY_OF, YESNO, 1),
+        Constraint('bfrm_norm', CAN_BE_ANY_OF, YESNO, 1),
+        Constraint('gene_center', CAN_BE_ANY_OF, ['median', 'mean', 'no'], 1),
+        Constraint(
+            'gene_normalize', CAN_BE_ANY_OF,
+            ['variance', 'sum_of_squares', 'no'], 1),
+        Constraint("gene_order", SAME_AS, 0, 1),
+        Constraint("annotate", SAME_AS, 0, 1),
+        Constraint("relabel_sample", SAME_AS, 0, 1),
+        Constraint("platform", SAME_AS, 0, 1),
+        Constraint('num_features', SAME_AS, 0, 1),
+        Constraint("filter_and_threshold", SAME_AS, 0, 1),
+        Constraint('unique_genes', SAME_AS, 0, 1),
+        Constraint('duplicate_probe', SAME_AS, 0, 1),
+        Constraint('group_fc', SAME_AS, 0, 1),
 
-        # ActbPlot
+        # SignalDistributionBoxplot
+        Constraint("logged", MUST_BE, "yes", 2),
         Constraint("contents", SAME_AS, 0, 2),
         Constraint("preprocess", SAME_AS, 0, 2),
-        Constraint("logged", MUST_BE, "yes", 2),
         Constraint('relabel_sample', SAME_AS, 0, 2),
-        
-        # HousekeepingPlot
-        Constraint("contents", SAME_AS, 0, 3),
-        Constraint('relabel_sample', SAME_AS, 0, 3),
 
-        # PcaPlot (No processing)
+        # ActbPlot (No normalization)
+        Constraint('logged', MUST_BE, "yes", 3),
+        Constraint("preprocess", SAME_AS, 0, 3),
+        Constraint("contents", SAME_AS, 0, 3),
+        Constraint('quantile_norm', SAME_AS, 0, 3),
+        Constraint('combat_norm', SAME_AS, 0, 3),
+        Constraint('dwd_norm', SAME_AS, 0, 3),
+        Constraint('shiftscale_norm', SAME_AS, 0, 3),
+        Constraint('bfrm_norm', SAME_AS, 0, 3),
+        Constraint('gene_center', SAME_AS, 0, 3),
+        Constraint('gene_normalize', SAME_AS, 0, 3),
+        Constraint('annotate', MUST_BE, "yes", 3),
+        Constraint('relabel_sample', SAME_AS, 0, 3),
+        Constraint('platform', SAME_AS, 0, 3),
+        Constraint('num_features', SAME_AS, 0, 3),
+        Constraint('filter_and_threshold', MUST_BE, "no", 3),
+        Constraint('unique_genes', MUST_BE, "no", 3),
+        Constraint('duplicate_probe', MUST_BE, "no", 3),
+        Constraint('group_fc', MUST_BE, "no", 3),
+
+        # ActbPlot (Normalized)
+        Constraint('logged', MUST_BE, "yes", 4),
         Constraint("contents", SAME_AS, 0, 4),
         Constraint("preprocess", SAME_AS, 0, 4),
-        Constraint("logged", MUST_BE, "yes", 4),
-        Constraint("missing_algorithm", SAME_AS, 0, 4),
-        Constraint("filter_missing_values", SAME_AS, 0, 4),
-        Constraint('quantile_norm', MUST_BE, "no", 4),
-        Constraint('combat_norm', MUST_BE, "no", 4),
-        Constraint('dwd_norm', MUST_BE, "no", 4),
-        Constraint('shiftscale_norm', MUST_BE, "no", 4),
-        Constraint('bfrm_norm', MUST_BE, "no", 4),
-        Constraint('gene_center', MUST_BE, "no", 4),
-        Constraint('gene_normalize', MUST_BE, "no", 4),
-        Constraint('gene_order', SAME_AS, 0, 4),
-        Constraint('annotate', SAME_AS, 0, 4),
+        Constraint('quantile_norm', SAME_AS, 1, 4),
+        Constraint('combat_norm', SAME_AS, 1, 4),
+        Constraint('dwd_norm', SAME_AS, 1, 4),
+        Constraint('shiftscale_norm', SAME_AS, 1, 4),
+        Constraint('bfrm_norm', SAME_AS, 1, 4),
+        Constraint('gene_center', SAME_AS, 1, 4),
+        Constraint('gene_normalize', SAME_AS, 1, 4),
+        Constraint('annotate', MUST_BE, "yes", 4),
         Constraint('relabel_sample', SAME_AS, 0, 4),
         Constraint('platform', SAME_AS, 0, 4),
         Constraint('num_features', SAME_AS, 0, 4),
-        Constraint('filter_and_threshold', MUST_BE, "yes", 4),
-        Constraint('unique_genes', MUST_BE, "no", 4),
-        Constraint('duplicate_probe', MUST_BE, "no", 4),
-        Constraint('group_fc', MUST_BE, "no", 4),
+        Constraint('filter_and_threshold', MUST_BE, "no", 4),
+        Constraint('unique_genes', SAME_AS, 0, 4),
+        Constraint('duplicate_probe', SAME_AS, 0, 4),
+        Constraint('group_fc', SAME_AS, 0, 4),
 
-        # PCAPlot (preprocessed).
+        # PcaPlot (No normalization)
+        Constraint("logged", MUST_BE, "yes", 5),
         Constraint("contents", SAME_AS, 0, 5),
         Constraint("preprocess", SAME_AS, 0, 5),
-        Constraint("missing_algorithm", SAME_AS, 0, 5),
-        Constraint("filter_missing_values", SAME_AS, 0, 5),
         Constraint('quantile_norm', SAME_AS, 0, 5),
         Constraint('combat_norm', SAME_AS, 0, 5),
         Constraint('dwd_norm', SAME_AS, 0, 5),
@@ -591,7 +620,6 @@ all_modules = [
         Constraint('bfrm_norm', SAME_AS, 0, 5),
         Constraint('gene_center', SAME_AS, 0, 5),
         Constraint('gene_normalize', SAME_AS, 0, 5),
-        Constraint('gene_order', SAME_AS, 0, 5),
         Constraint('annotate', SAME_AS, 0, 5),
         Constraint('relabel_sample', SAME_AS, 0, 5),
         Constraint('platform', SAME_AS, 0, 5),
@@ -600,37 +628,31 @@ all_modules = [
         Constraint('unique_genes', SAME_AS, 0, 5),
         Constraint('duplicate_probe', SAME_AS, 0, 5),
         Constraint('group_fc', SAME_AS, 0, 5),
-        Constraint('logged', SAME_AS, 0, 5),
 
-        # Heatmap (no normalization).
+        # PCAPlot (normalized).
+        Constraint('logged', MUST_BE, "yes", 6),
         Constraint("contents", SAME_AS, 0, 6),
         Constraint("preprocess", SAME_AS, 0, 6),
-        Constraint("missing_algorithm", SAME_AS, 0, 6),
-        Constraint("filter_missing_values", SAME_AS, 0, 6),
-        Constraint('quantile_norm', MUST_BE, "no", 6),
-        Constraint('combat_norm', MUST_BE, "no", 6),
-        Constraint('dwd_norm', MUST_BE, "no", 6),
-        Constraint('shiftscale_norm', MUST_BE, "no", 6),
-        Constraint('bfrm_norm', MUST_BE, "no", 6),
-        Constraint("gene_center", MUST_BE, "mean", 6),
-        Constraint("gene_normalize", MUST_BE, "variance", 6),
-        Constraint('gene_order', SAME_AS, 0, 6),
+        Constraint('quantile_norm', SAME_AS, 1, 6),
+        Constraint('combat_norm', SAME_AS, 1, 6),
+        Constraint('dwd_norm', SAME_AS, 1, 6),
+        Constraint('shiftscale_norm', SAME_AS, 1, 6),
+        Constraint('bfrm_norm', SAME_AS, 1, 6),
+        Constraint('gene_center', SAME_AS, 1, 6),
+        Constraint('gene_normalize', SAME_AS, 1, 6),
         Constraint('annotate', SAME_AS, 0, 6),
         Constraint('relabel_sample', SAME_AS, 0, 6),
         Constraint('platform', SAME_AS, 0, 6),
         Constraint('num_features', SAME_AS, 0, 6),
-        Constraint("filter_and_threshold", MUST_BE, "yes", 6),
-        Constraint('unique_genes', MUST_BE, "no", 6),
-        Constraint('duplicate_probe', MUST_BE, "no", 6),
-        Constraint('group_fc', MUST_BE, "no", 6),
-        Constraint('logged', SAME_AS, 0, 6),
-        Constraint("cluster_alg", MUST_BE, "hierarchical", 6),
+        Constraint('filter_and_threshold', MUST_BE, "yes", 6),
+        Constraint('unique_genes', SAME_AS, 0, 6),
+        Constraint('duplicate_probe', SAME_AS, 0, 6),
+        Constraint('group_fc', SAME_AS, 0, 6),
 
-        # Heatmap (normalized).
+        # Heatmap (no normalization).
+        Constraint('logged', MUST_BE, "yes", 7),
         Constraint("contents", SAME_AS, 0, 7),
         Constraint("preprocess", SAME_AS, 0, 7),
-        Constraint("missing_algorithm", SAME_AS, 0, 7),
-        Constraint("filter_missing_values", SAME_AS, 0, 7),
         Constraint('quantile_norm', SAME_AS, 0, 7),
         Constraint('combat_norm', SAME_AS, 0, 7),
         Constraint('dwd_norm', SAME_AS, 0, 7),
@@ -638,7 +660,6 @@ all_modules = [
         Constraint('bfrm_norm', SAME_AS, 0, 7),
         Constraint("gene_center", MUST_BE, "mean", 7),
         Constraint("gene_normalize", MUST_BE, "variance", 7),
-        Constraint('gene_order', SAME_AS, 0, 7),
         Constraint('annotate', SAME_AS, 0, 7),
         Constraint('relabel_sample', SAME_AS, 0, 7),
         Constraint('platform', SAME_AS, 0, 7),
@@ -647,32 +668,56 @@ all_modules = [
         Constraint('unique_genes', SAME_AS, 0, 7),
         Constraint('duplicate_probe', SAME_AS, 0, 7),
         Constraint('group_fc', SAME_AS, 0, 7),
-        Constraint('logged', SAME_AS, 0, 7),
         Constraint("cluster_alg", MUST_BE, "hierarchical", 7),
 
-        # IlluminaControlFile
+        # Heatmap (normalized).
+        Constraint('logged', MUST_BE, "yes", 8),
         Constraint("contents", SAME_AS, 0, 8),
-        
-        # BiotinPlot
+        Constraint("preprocess", SAME_AS, 0, 8),
+        Constraint('quantile_norm', SAME_AS, 1, 8),
+        Constraint('combat_norm', SAME_AS, 1, 8),
+        Constraint('dwd_norm', SAME_AS, 1, 8),
+        Constraint('shiftscale_norm', SAME_AS, 1, 8),
+        Constraint('bfrm_norm', SAME_AS, 1, 8),
+        Constraint("gene_center", MUST_BE, "mean", 8),
+        Constraint("gene_normalize", MUST_BE, "variance", 8),
+        Constraint('annotate', SAME_AS, 0, 8),
+        Constraint('relabel_sample', SAME_AS, 0, 8),
+        Constraint('platform', SAME_AS, 0, 8),
+        Constraint('num_features', SAME_AS, 0, 8),
+        Constraint("filter_and_threshold", MUST_BE, "yes", 8),
+        Constraint('unique_genes', SAME_AS, 0, 8),
+        Constraint('duplicate_probe', SAME_AS, 0, 8),
+        Constraint('group_fc', SAME_AS, 0, 8),
+        Constraint("cluster_alg", MUST_BE, "hierarchical", 8),
+
+        # IlluminaControlFile
         Constraint("contents", SAME_AS, 0, 9),
-        Constraint('relabel_sample', SAME_AS, 0, 9),
+        
+        # HousekeepingPlot
+        Constraint("contents", SAME_AS, 0, 10),
+        Constraint('relabel_sample', SAME_AS, 0, 10),
+
+        # BiotinPlot
+        Constraint("contents", SAME_AS, 0, 11),
+        Constraint('relabel_sample', SAME_AS, 0, 11),
 
         # IlluHybridizationProbePlot
-        Constraint("contents", SAME_AS, 0, 10),
-
+        Constraint("contents", SAME_AS, 0, 12),
         
 
+        Consequence("logged", SAME_AS_CONSTRAINT, 0),
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
         Consequence("missing_algorithm", SAME_AS_CONSTRAINT, 0),
         Consequence("filter_missing_values", SAME_AS_CONSTRAINT, 0),
-        Consequence("quantile_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("combat_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("dwd_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("bfrm_norm", SAME_AS_CONSTRAINT, 0),
-        Consequence("gene_center", SAME_AS_CONSTRAINT, 0),
-        Consequence("gene_normalize", SAME_AS_CONSTRAINT, 0),
+        Consequence("quantile_norm", SAME_AS_CONSTRAINT, 1),
+        Consequence("combat_norm", SAME_AS_CONSTRAINT, 1),
+        Consequence("dwd_norm", SAME_AS_CONSTRAINT, 1),
+        Consequence("shiftscale_norm", SAME_AS_CONSTRAINT, 1),
+        Consequence("bfrm_norm", SAME_AS_CONSTRAINT, 1),
+        Consequence("gene_center", SAME_AS_CONSTRAINT, 1),
+        Consequence("gene_normalize", SAME_AS_CONSTRAINT, 1),
         Consequence("gene_order", SAME_AS_CONSTRAINT, 0),
         Consequence("annotate", SAME_AS_CONSTRAINT, 0),
         Consequence("relabel_sample", SAME_AS_CONSTRAINT, 0),
@@ -682,7 +727,6 @@ all_modules = [
         Consequence("unique_genes", SAME_AS_CONSTRAINT, 0),
         Consequence("duplicate_probe", SAME_AS_CONSTRAINT, 0),
         Consequence("group_fc", SAME_AS_CONSTRAINT, 0),
-        Consequence("logged", SAME_AS_CONSTRAINT, 0),
 
         help="Do comprehensive preprocessing for illumina",
         ),

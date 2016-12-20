@@ -117,7 +117,8 @@ SimpleLabelFile = DataType(
     # Sample   Class
     ATTR_CONTENTS,
     ATTR_PREPROCESS,
-    help="A simple tab-delimited format with labels for each sample.",
+    help="A simple tab-delimited format with labels for each sample.  "
+    "Can have two or more different classes.",
     )
 
 ClassLabelFile = DataType(
@@ -216,21 +217,20 @@ CONVERT_IMPUTE = [
     Constraint(
         "missing_algorithm", CAN_BE_ANY_OF,
         ['none', 'zero_fill', 'median_fill']),
-    #Constraint("missing_values", MUST_BE, "no"),
-    Consequence("missing_algorithm", SAME_AS_CONSTRAINT),
     Consequence("filter_missing_values", SAME_AS_CONSTRAINT),
+    Consequence("missing_algorithm", SAME_AS_CONSTRAINT),
     ]
 CONVERT_MERGE = [
     Constraint("quantile_norm", CAN_BE_ANY_OF, YESNO),
     Constraint("combat_norm", CAN_BE_ANY_OF, YESNO),
+    Constraint("dwd_norm", CAN_BE_ANY_OF, YESNO),
     Constraint("shiftscale_norm", CAN_BE_ANY_OF, YESNO),
     Constraint("bfrm_norm", CAN_BE_ANY_OF, YESNO),
-    Constraint("dwd_norm", CAN_BE_ANY_OF, YESNO),
     Consequence("quantile_norm", SAME_AS_CONSTRAINT),
     Consequence("combat_norm", SAME_AS_CONSTRAINT),
+    Consequence("dwd_norm", SAME_AS_CONSTRAINT),
     Consequence("shiftscale_norm", SAME_AS_CONSTRAINT),
     Consequence("bfrm_norm", SAME_AS_CONSTRAINT),
-    Consequence("dwd_norm", SAME_AS_CONSTRAINT),
     ]
 CONVERT_NORMALIZE = [
     Constraint("gene_center", CAN_BE_ANY_OF, ["no", "median", "mean"]),
@@ -261,7 +261,7 @@ CONVERT_FILTER = [
     Constraint(
         "duplicate_probe", CAN_BE_ANY_OF,
         ["no", "closest_probe", "high_var_probe"]),
-    Constraint("group_fc", CAN_BE_ANY_OF, ['yes', "no"]),
+    Constraint("group_fc", CAN_BE_ANY_OF, YESNO),
     Consequence("num_features", SAME_AS_CONSTRAINT),
     Consequence("filter_and_threshold", SAME_AS_CONSTRAINT),
     Consequence("unique_genes", SAME_AS_CONSTRAINT),

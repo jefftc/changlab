@@ -44,11 +44,11 @@ SignalDistributionBoxplot = DataType(
 
 ActbPlot = DataType(
     "ActbPlot",
-    SignalFile.ATTR_CONTENTS,
-    SignalFile.ATTR_PREPROCESS,
-    SignalFile.ATTR_LOGGED,
-    AttributeDef(
-        "relabel_sample", YESNO, "no", "no", help="rename sample or not"),
+    *(SignalFile.UNPROC_ATTRIBUTES +
+      SignalFile.MERGE_ATTRIBUTES +
+      SignalFile.NORMALIZE_ATTRIBUTES +
+      SignalFile.ANNOTATE_ATTRIBUTES +
+      SignalFile.FILTER_ATTRIBUTES),
     help="Gene expression of beta-actin.")
 
 HousekeepingPlot = DataType(
@@ -79,17 +79,11 @@ BiotinPlot = DataType(
 
 PCAPlot = DataType(
     "PCAPlot",
-    # Technically, don't need:
-    # annotate
-    # platform
-    # Keep anyway for simplicity.
-    # 
+    # Don't need IMPUTE, ORDER.
     # relabel_sample is helpful if we're labeling the points.
     *(SignalFile.UNPROC_ATTRIBUTES +
-      SignalFile.IMPUTE_ATTRIBUTES +
       SignalFile.MERGE_ATTRIBUTES +
       SignalFile.NORMALIZE_ATTRIBUTES +
-      SignalFile.ORDER_ATTRIBUTES +
       SignalFile.ANNOTATE_ATTRIBUTES +
       SignalFile.FILTER_ATTRIBUTES),
     help="PNG file with a PCA plot."
@@ -97,21 +91,15 @@ PCAPlot = DataType(
 
 Heatmap = DataType(
     "Heatmap",
-    # Technically, don't need:
-    # annotate
-    # platform
-    # Keep anyway for simplicity.
-    # 
+    # Don't need IMPUTE, ORDER.
     # relabel_sample is helpful if we're labeling the points.
     AttributeDef(
         "cluster_alg", ["none", "som", "kmeans", "hierarchical"],
         "none", "hierarchical",
         help="Clustering algorithm."),
     *(SignalFile.UNPROC_ATTRIBUTES +
-      SignalFile.IMPUTE_ATTRIBUTES +
       SignalFile.MERGE_ATTRIBUTES +
       SignalFile.NORMALIZE_ATTRIBUTES +
-      SignalFile.ORDER_ATTRIBUTES +
       SignalFile.ANNOTATE_ATTRIBUTES +
       SignalFile.FILTER_ATTRIBUTES),
     help="A PNG file containing a heatmap."
@@ -123,6 +111,8 @@ ClusterFolder = DataType(
         "cluster_alg", ["hierarchical", "kmeans", "som"],
         "kmeans", "kmeans",
         help="cluster algorithm"),
+    # Keep all SignalFile attributes, since we're generating a new
+    # SignalFile.
     *(SignalFile.UNPROC_ATTRIBUTES +
       SignalFile.IMPUTE_ATTRIBUTES +
       SignalFile.MERGE_ATTRIBUTES +
@@ -167,15 +157,18 @@ all_modules = [
         #SignalFile._SignalFile_Impute, ActbPlot,
         #Constraint("missing_values", MUST_BE, "no"),
         SignalFile.SignalFile, ActbPlot,
-        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
-        Consequence("contents", SAME_AS_CONSTRAINT),
-        Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS),
-        Consequence("preprocess", SAME_AS_CONSTRAINT),
-        Constraint("logged", MUST_BE, "yes"),
-        Consequence("logged", SAME_AS_CONSTRAINT),
-        Constraint("annotate", MUST_BE, "yes"),
+        Constraint("annotate", MUST_BE, "yes"),   # Need names annotated.
         Constraint("relabel_sample", CAN_BE_ANY_OF, YESNO),
+        Constraint("platform", CAN_BE_ANY_OF, ["no", "yes", 'u133A']),
+        Consequence("annotate", SAME_AS_CONSTRAINT),
         Consequence("relabel_sample", SAME_AS_CONSTRAINT),
+        Consequence("platform", SAME_AS_CONSTRAINT),
+        *(
+            SignalFile.CONVERT_UNPROC +
+            SignalFile.CONVERT_MERGE +
+            SignalFile.CONVERT_NORMALIZE +
+            SignalFile.CONVERT_FILTER
+            ),
         help="Plot the expression values of ACTB."),
     ModuleNode(
         'plot_illu_housekeeping_line',
@@ -224,10 +217,8 @@ all_modules = [
         #    ),
         *(
             SignalFile.CONVERT_UNPROC +
-            SignalFile.CONVERT_IMPUTE +
             SignalFile.CONVERT_MERGE +
             SignalFile.CONVERT_NORMALIZE +
-            SignalFile.CONVERT_ORDER +
             SignalFile.CONVERT_ANNOTATE +
             SignalFile.CONVERT_FILTER
             ),
@@ -378,10 +369,8 @@ all_modules = [
         Consequence("cluster_alg", SAME_AS_CONSTRAINT),
         *(
             SignalFile.CONVERT_UNPROC +
-            SignalFile.CONVERT_IMPUTE +
             SignalFile.CONVERT_MERGE +
             SignalFile.CONVERT_NORMALIZE +
-            SignalFile.CONVERT_ORDER +
             SignalFile.CONVERT_ANNOTATE +
             SignalFile.CONVERT_FILTER
             ),

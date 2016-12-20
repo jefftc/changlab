@@ -468,13 +468,10 @@ Heatmap
   duplicate_probe=no
   dwd_norm=no
   filter_and_threshold=no
-  filter_missing_values=no
   gene_center=no
   gene_normalize=no
-  gene_order=none
   group_fc=no
   logged=no
-  missing_algorithm=zero_fill
   num_features=no
   platform=no
   preprocess=unknown
