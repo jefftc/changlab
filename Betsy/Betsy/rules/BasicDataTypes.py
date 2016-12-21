@@ -1,7 +1,7 @@
 from Betsy.bie3 import *
 
 CONTENTS2NUMCLASSES = {
-    "unspecified" : None,
+    "unspecified" : None,   # can be any number of classes
     
     # For 2 class problems.
     "class0" : 1,

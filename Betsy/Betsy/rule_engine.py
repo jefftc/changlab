@@ -73,6 +73,7 @@ def run_pipeline(
     LOG_FILENAME = os.path.join(output_path, 'traceback.txt')
     logging.basicConfig(filename=LOG_FILENAME, level=logging.DEBUG)
 
+        
     # Make a list of the valid node_ids and transitions in the pipeline.
     x = bie3._merge_paths(paths)
     path_ids, path_transitions, x = x
@@ -139,7 +140,33 @@ def run_pipeline(
                 bold_transitions=path_transitions, highlight_yellow=all_ids,
                 highlight_green=start_ids, highlight_orange=done_ids,
                 verbose=True)
-        assert it < MAX_ITER, "Too many iterations: %d" % it
+        # Make an error message to try to diagnose problem.
+        if it >= MAX_ITER:
+            # Look for all the modules, and print out why each of them
+            # can't be run.
+            msg = []
+            p = msg.append
+            for x in stack:
+                node, node_id = x[:2]
+                if not isinstance(node, bie3.ModuleNode):
+                    continue
+                x = _get_available_input_combinations(
+                    network, node_id, custom_attributes, pool,
+                    path_transitions)
+                all_antecedent_ids, not_available = x
+                assert not all_antecedent_ids, (
+                    "Too many iterations, but modules left to be run.  "
+                    "Increase MAX_ITER")
+                assert not_available
+                x = [x for x in not_available if x[0] in path_ids]
+                p("Can't run [%d] %s.  Missing:" % (node_id, node.name))
+                for i, (input_id, reason) in enumerate(x):
+                    n = network.nodes[input_id]
+                    p("%d.  [%d] %s" % (i+1, input_id, n.datatype.name))
+                    for name in sorted(n.attributes):
+                        p("    %s=%s" % (name, n.attributes[name]))
+            msg = "\n".join(msg)
+            assert it < MAX_ITER, "Too many iterations (%d)\n%s" % (it, msg)
 
         # Make sure we're not stuck in an infinite loop.
         # 1.  Only modules on the stack.  AND
@@ -229,7 +256,7 @@ def run_pipeline(
                 # bottom of the stack and try again later.
                 stack.insert(0, (node, node_id, more_info, transitions))
                 if DEBUG_RUN_PIPELINE:
-                    print "Not ready to run yet.  Try again later."
+                    print "Not ready to run yet.  Will try again later."
                     for x in not_available:
                         input_id, reason = x
                         if input_id not in path_ids:
@@ -784,9 +811,10 @@ def _rmtree_multi(path):
 
 def _get_available_input_combinations(
     network, module_id, custom_attributes, pool, valid_transitions):
-    # Return a list of tuples indicating the node_ids that are:
-    # 1.  Valid sets of input data.
-    # 2.  Available in the pool.
+    # Return two lists:
+    # 1.  Valid sets of input data.  Tuples of node_ids.  Same order
+    #     as module.in_datatypes.
+    # 2.  Available in the pool.  Tuple of (node_id, reason).
     # node_ids are in the same order as the module.datatypes.
     import bie3
 

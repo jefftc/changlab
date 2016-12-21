@@ -58,6 +58,8 @@ write_orientation
 read_stranded
 write_stranded
 
+txt2xls
+
 """
 #FMT = "%a %b %d %H:%M:%S %Y"
 
@@ -1261,3 +1263,29 @@ def write_stranded(stranded, filename):
     json.dump(x, handle, indent=2)
 
 
+def txt2xls(filename, bold_header=False, unlink_textfile=True):
+    import os
+    from genomicode import filelib
+    from genomicode import parallel
+
+    filelib.assert_exists_nz(filename)
+    assert filename.lower().endswith(".txt")
+    xls_filename = "%s.xls" % filename[:-4]
+    
+    txt2xls = get_config("txt2xls", which_assert_file=True)
+    sq = parallel.quote
+    cmd = [
+        sq(txt2xls),
+        ]
+    if bold_header:
+        cmd += ["-b"]
+    cmd += [
+        sq(filename)
+        ]
+    cmd = " ".join(cmd)
+    cmd = "%s > %s" % (cmd, xls_filename)
+    os.system(cmd)
+    filelib.assert_exists_nz(xls_filename)
+
+    if unlink_textfile:
+        os.unlink(filename)

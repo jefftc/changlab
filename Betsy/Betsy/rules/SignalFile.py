@@ -111,8 +111,8 @@ ATTR_LOGGED = AttributeDef(
     help="logged or not")
 
 
-SimpleLabelFile = DataType(
-    "SimpleLabelFile",
+SimpleClassFile = DataType(
+    "SimpleClassFile",
     # Should have headers:
     # Sample   Class
     ATTR_CONTENTS,
@@ -373,8 +373,9 @@ IlluminaControlFile = DataType(
 
 
 all_data_types = [
-    SimpleLabelFile,
+    SimpleClassFile,
     ClassLabelFile,
+    
     UnprocessedSignalFile,
     _SignalFile_Impute,
     _SignalFile_Merge,
@@ -1180,13 +1181,15 @@ all_modules = [
 
     ModuleNode(
         "convert_simplelabelfile_to_classlabelfile",
-        [UnprocessedSignalFile, SimpleLabelFile], ClassLabelFile,
+        [UnprocessedSignalFile, SimpleClassFile], ClassLabelFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Constraint("contents", SAME_AS, 0, 1),
         Consequence("contents", SAME_AS_CONSTRAINT, 0),
         Constraint("preprocess", CAN_BE_ANY_OF, BDT.PREPROCESS, 0),
         Constraint("preprocess", SAME_AS, 0, 1),
         Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
-        help="Convert a SimpleLabelFile to ClassLabelFile.",
+        Constraint("format", CAN_BE_ANY_OF, ["unknown"]+EXPRESSION_FORMATS, 0),
+        Constraint("logged", CAN_BE_ANY_OF, YESNO, 0),
+        help="Convert a SimpleClassFile to ClassLabelFile.",
         ),
     ]

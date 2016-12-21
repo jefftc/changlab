@@ -529,3 +529,22 @@ Pruning redundant pipelines.
 No redundant pipelines found.  4 final pipelines.
 Making sure all input files provided.
 No file given: ExpressionFiles.
+Starting rule engine.
+Checking parameters.
+Generating a network that produces a:
+DiffExpAnalysis
+  contents=unspecified
+  de_algorithm=deseq2
+  preprocess=counts
+Made a network with 130 nodes.
+Writing network in json format: test25.txt.
+Assigning --input's to nodes in the network.
+All --input data found in network.
+Constructing pipelines that use --input data types.
+Found 6 possible pipelines.
+Making sure all required attributes (--mattr) are provided.
+Pruning redundant pipelines.
+No redundant pipelines found.  6 final pipelines.
+Making sure all input files provided.
+No file given: UnprocessedSignalFile.
+No file given: SimpleClassFile.

@@ -61,7 +61,6 @@ class Module(AbstractModule):
 
 def plot_heatmap(filename, outfile, cluster_files, user_options):
     from genomicode import parallel
-    from genomicode import filelib
     from genomicode import graphlib
     from Betsy import module_utils as mlib
     
@@ -126,7 +125,7 @@ def plot_heatmap(filename, outfile, cluster_files, user_options):
 
     # Set default values.
     if not hm_width or not hm_height:
-        nrow, ncol = get_heatmap_size(filename)
+        nrow, ncol = get_matrix_size(filename)
         fn = graphlib.find_wide_heatmap_size
         if nrow > ncol:
             fn = graphlib.find_tall_heatmap_size
@@ -136,12 +135,12 @@ def plot_heatmap(filename, outfile, cluster_files, user_options):
         hm_width, hm_height = x
 
     if not hm_label_genes:
-        nrow, ncol = get_heatmap_size(filename)
+        nrow, ncol = get_matrix_size(filename)
         hm_label_genes = "no"
         if nrow <= 50:
             hm_label_genes = "yes"
     if not hm_label_arrays:
-        nrow, ncol = get_heatmap_size(filename)
+        nrow, ncol = get_matrix_size(filename)
         hm_label_arrays = "no"
         if ncol <= 50:
             hm_label_arrays = "yes"
@@ -201,16 +200,31 @@ def plot_heatmap(filename, outfile, cluster_files, user_options):
     return cmd
 
 
-def _get_heatmap_size_h(filename):
+def _get_matrix_size_h(filename):
     import arrayio
     MATRIX = arrayio.read(filename)
     nrow, ncol = MATRIX.nrow(), MATRIX.ncol()
     assert nrow and ncol
     return nrow, ncol
 
-HM_SIZE_CACHE = {}
+MAT_SIZE_CACHE = {}
+def get_matrix_size(filename):
+    global MAT_SIZE_CACHE
+    if filename not in MAT_SIZE_CACHE:
+        MAT_SIZE_CACHE[filename] = _get_matrix_size_h(filename)
+    return MAT_SIZE_CACHE[filename]
+
 def get_heatmap_size(filename):
-    global HM_SIZE_CACHE
-    if filename not in HM_SIZE_CACHE:
-        HM_SIZE_CACHE[filename] = _get_heatmap_size_h(filename)
-    return HM_SIZE_CACHE[filename]
+    # Return box_width, box_height.
+    from genomicode import graphlib
+    
+    nrow, ncol = get_matrix_size(filename)
+    fn = graphlib.find_wide_heatmap_size
+    if nrow > ncol:
+        fn = graphlib.find_tall_heatmap_size
+    x = fn(
+        nrow, ncol, max_total_height=4096, max_total_width=4096,
+        max_box_height=200, max_box_width=200)
+    hm_width, hm_height = x
+    return hm_width, hm_height
+    

@@ -309,3 +309,12 @@ betsy_run.py --network_png test24.png --network_json test24.txt \
   --input ExpressionFiles \
   --output CompleteExpressionPreprocessing \
   --dattr CompleteExpressionPreprocessing.preprocess=illumina >& test24.log
+# Do differential expression analysis of RNA-Seq data.
+betsy_run.py --network_png test25.png --network_json test25.txt \
+  --input UnprocessedSignalFile \
+  --dattr UnprocessedSignalFile.preprocess=counts \
+  --input SimpleClassFile \
+  --dattr SimpleClassFile.preprocess=counts \
+  --output DiffExpAnalysis \
+  --dattr DiffExpAnalysis.de_algorithm=deseq2 \
+  --dattr DiffExpAnalysis.preprocess=counts >& test25.log

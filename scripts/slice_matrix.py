@@ -1452,6 +1452,10 @@ def reorder_col_cluster(MATRIX, cluster, tree_file,
 
     # cluster30 will convert the MATRIX to PCL format, losing row
     # annotations.  Put missing row annotations back.
+    # Gene ID  Gene Name  [...]                   Original MATRIX
+    # Gene ID  NAME  GWEIGHT                      After cluster30
+    # Gene ID  NAME  GWEIGHT  Gene Name  [...]    Fixed
+    # NAME contains the first column of MATRIX.
     all_annots = []
     for x in MATRIX.row_names():
         x = MATRIX.row_names(x)
@@ -2284,7 +2288,7 @@ def select_row_fc_not_logged(MATRIX, select_fc):
     select_fc = float(select_fc)
     assert select_fc > 0 and select_fc < 500
 
-    log_fc = []
+    fc = []
     for x in MATRIX._X:
         x = [x for x in x if x is not None]
         if not x:
@@ -2423,6 +2427,7 @@ def reorder_row_cluster(
     indexes):
     from genomicode import cluster30
     from genomicode import clusterio
+    from genomicode import matrixlib
 
     if not cluster:
         assert not tree_file
@@ -2439,6 +2444,31 @@ def reorder_row_cluster(
         method=cluster_method)
     if tree_file:
         clusterio.write_gtr_file(cdata.gene_tree, open(tree_file, 'w'))
+
+    # cluster30 will convert the MATRIX to PCL format, losing row
+    # annotations.  Put missing row annotations back.
+    # Gene ID  Gene Name  [...]                   Original MATRIX
+    # Gene ID  NAME  GWEIGHT                      After cluster30
+    # Gene ID  NAME  GWEIGHT  Gene Name  [...]    Fixed
+    # NAME contains the first column of MATRIX.
+    all_annots = []
+    for x in MATRIX.row_names():
+        x = MATRIX.row_names(x)
+        all_annots.append(x)
+    x = matrixlib.align_rows_to_many_annots(
+        cdata.matrix, all_annots, get_indexes=True)
+    I_MATRIX, I_row_names, index = x
+    assert I_MATRIX and I_row_names
+    assert I_MATRIX == range(cdata.matrix.nrow())
+
+    for header in MATRIX.row_names():
+        if header in cdata.matrix.row_names():
+            continue
+        x = MATRIX.row_names(header)
+        x = [x[i] for i in I_row_names]
+        cdata.matrix._row_order.append(header)
+        cdata.matrix._row_names[header] = x
+
     return cdata.matrix
 
     ## R = jmath.start_R()

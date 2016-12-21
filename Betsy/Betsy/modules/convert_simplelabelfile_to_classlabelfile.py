@@ -10,8 +10,7 @@ class Module(AbstractModule):
         import arrayio
         from genomicode import filelib
         from genomicode import arraysetlib
-        #from Betsy import read_label_file
-        #from Betsy import module_utils
+        from genomicode import parselib
         from Betsy.rules import BasicDataTypes as BDT
 
         signal_node, slf_node = antecedents
@@ -21,7 +20,9 @@ class Module(AbstractModule):
         classes = []  # Ordered list of classes
         for d in filelib.read_row(slf_filename, header=1):
             x = hasattr(d, "Sample") and hasattr(d, "Class")
-            assert x, "SimpleLabelFile must have headers Sample and Class."
+            assert x, (
+                "SimpleLabelFile must have headers Sample and Class.  "
+                "Headers are: %s" % parselib.pretty_list(d._header))
             samples.append(d.Sample)
             classes.append(d.Class)
 
@@ -40,7 +41,9 @@ class Module(AbstractModule):
 
         # Check whether number of classes matches contents variable.
         x = slf_node.data.attributes["contents"]
-        num_classes = BDT.CONTENTS2NUMCLASSES[x]
+        num_classes = BDT.CONTENTS2NUMCLASSES.get(x)
+        if num_classes is None:
+            num_classes = len(class_names)
         assert len(class_names) == num_classes, \
                'For files with "%s", I expected %d classes but found %d.' % (
             x, num_classes, len(class_names))
