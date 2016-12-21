@@ -81,8 +81,6 @@ class Module(AbstractModule):
         x2 = [x.out_filename for x in jobs]
         filelib.assert_exists_nz_many(x1+x2)
 
-        raise NotImplementedError
-
         return metadata
 
 

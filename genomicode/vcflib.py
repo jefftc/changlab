@@ -1078,8 +1078,17 @@ class PindelCaller(Caller):
         num_ref = x[0]
         num_alt = x[1:]
         assert len(num_alt) == 1
+        # See:
+        # PASS  GT:AD   0/0:-1,1
+        # Don't understand what negative REF frequency means?  Just
+        # set to 0.
+        if num_ref < 0:
+            num_ref = 0
         total_reads = num_ref + num_alt[0]
-        vaf = [float(x)/total_reads for x in num_alt]
+        if not total_reads:
+            vaf = [0] * len(num_alt)
+        else:
+            vaf = [float(x)/total_reads for x in num_alt]
         call = _parse_vcf_value(genodict["GT"], len_exactly=1)[0]
         return Call(num_ref, num_alt, total_reads, vaf, call)
     def get_filter(self, var):
