@@ -68,13 +68,22 @@ class Module(AbstractModule):
         #REF = matrix.header2annots["______Ref"]
         #ALT = matrix.header2annots["______Alt"]
 
+        # Optimization: normalize the headers for the samples and callers.
+        sc2header = {}  # (sample, caller) -> header_h
+        for sc in itertools.product(matrix.samples, matrix.callers):
+            sample, caller = sc
+            header = "%s___%s___Ref/Alt/VAF" % (sample, caller)
+            header_h = matrix.normalize_header(header)
+            assert header_h
+            sc2header[sc] = header_h
+        
         for i in range(matrix.num_annots()):
             has_calls = False   # whether this row has any calls.
             for sc in itertools.product(matrix.samples, matrix.callers):
                 sample, caller = sc
-            
-                header = "%s___%s___Ref/Alt/VAF" % (sample, caller)
-                call_str = matrix[header][i]
+
+                header_h = sc2header[sc]
+                call_str = matrix.header2annots[header_h][i]
                 if not call_str:
                     continue
                 call = SimpleVariantMatrix._parse_call(call_str)
@@ -113,14 +122,16 @@ class Module(AbstractModule):
         
         # Remove the calls.
         for i in call_remove:
-            for sample, caller in call_remove[i]:
-                header = "%s___%s___Ref/Alt/VAF" % (sample, caller)
-                call_str = matrix[header][i]
+            for sc in call_remove[i]:
+                header_h = sc2header[sc]
+                call_str = matrix.header2annots[header_h][i]
                 assert call_str
-                matrix.header2annots[header][i] = ""
+                matrix.header2annots[header_h][i] = ""
                 
         # Which rows to keep.
-        I_keep = [i for i in range(matrix.num_annots()) if i not in I_remove]
+        I_remove_dict = {}.fromkeys(I_remove)
+        I_keep = [
+            i for i in range(matrix.num_annots()) if i not in I_remove_dict]
         filtered_matrix = AnnotationMatrix.rowslice(matrix, I_keep)
         SimpleVariantMatrix.write_from_am(out_filename, filtered_matrix)
 

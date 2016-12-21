@@ -1,7 +1,7 @@
 from Betsy.bie3 import *
 
 CONTENTS2NUMCLASSES = {
-    "unspecified" : None,
+    "unspecified" : None,   # can be any number of classes
     
     # For 2 class problems.
     "class0" : 1,
@@ -87,10 +87,11 @@ RenameFile = DataType(
     'RenameFile',
     AttributeDef(
         "contents", CONTENTS, 'unspecified', 'unspecified', help="contents"),
-    AttributeDef(
-        "labels_from", ["title", "description"], 'title', 'title',
-        help="labels from title or description"),
+    #AttributeDef(
+    #    "labels_from", ["title", "description"], 'title', 'title',
+    #    help="labels from title or description"),
     help="A file used to rename the sample name in the gene expression file.")
+
 
 ExpressionFiles = DataType(
     "ExpressionFiles",

@@ -1,4 +1,4 @@
-from Betsy.rules import ArrayPlatforms as AP
+from Betsy.rules import MicroarrayPreprocessing as MP
 
 from Module import AbstractModule
 
@@ -33,12 +33,12 @@ class Module(AbstractModule):
             zip_directory(in_data.identifier, zipfile_name)
             params['idat.zip'] = os.path.join(".", zipfile_name)
 
-        x = user_options.get("illu_manifest", AP.DEFAULT_MANIFEST)
-        assert x in AP.ILLU_MANIFEST, "Unknown manifest: %s" % x
+        x = user_options.get("illu_manifest", MP.DEFAULT_MANIFEST)
+        assert x in MP.ILLU_MANIFEST, "Unknown manifest: %s" % x
         params['manifest'] = x
 
-        x = user_options.get("illu_chip", AP.DEFAULT_CHIP)
-        assert x in AP.ILLU_CHIP, "Unknown chip: %s" % x
+        x = user_options.get("illu_chip", MP.DEFAULT_CHIP)
+        assert x in MP.ILLU_CHIP, "Unknown chip: %s" % x
         params['chip'] = x
 
         x = user_options.get("illu_bg_mode")

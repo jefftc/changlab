@@ -93,6 +93,31 @@ def parse_ranges(s):
         ranges.append((start, stop))
     return ranges
 
+def unparse_ranges(ranges):
+    # Given a set of ranges (start, end), exclusive end, return a
+    # string that describes the range.
+    ranges = sorted(ranges)
+    # Merge ranges.
+    i = 0
+    while i < len(ranges)-1:
+        (s1, e1), (s2, e2) = ranges[i], ranges[i+1]
+        assert s1 <= s2
+        if s2 <= e1:
+            ranges[i] = s1, max(e1, e2)
+            del ranges[i+1]
+        else:
+            i += 1
+    ranges_str = []
+    for (s, e) in ranges:
+        assert s < e
+        if s+1 == e:
+            x = str(s)
+        else:
+            x = "%d-%d" % (s, e-1)
+        ranges_str.append(x)
+    return ",".join(ranges_str)
+    
+
 def test_parse_ranges():
     tests = [
         ("16", [(16, 17)]),
@@ -274,6 +299,7 @@ def pretty_filesize(size):
 
 
 def linesplit(one_long_line, prefix1=0, prefixn=4, width=72):
+    # Return list of lines.
     lines = one_long_line.split("\n")
     all_lines = []
     for i in range(len(lines)):

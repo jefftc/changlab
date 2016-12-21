@@ -1,7 +1,8 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import GeneExpProcessing
-import PcaAnalysis
+import SignalFile
+#import PcaAnalysis
+import ExpressionVisualization as EV
 
 ClassifyFile = DataType(
     'ClassifyFile',
@@ -73,8 +74,8 @@ all_data_types = [
 all_modules = [
     ModuleNode(
         "merge_files_for_classification",
-        [GeneExpProcessing.SignalFile, GeneExpProcessing.SignalFile],
-        GeneExpProcessing.SignalFile,
+        [SignalFile.SignalFile, SignalFile.SignalFile],
+        SignalFile.SignalFile,
         Constraint('contents', MUST_BE, "class0,class1", 0),
         Constraint('format', MUST_BE, 'gct', 0),
         Constraint('logged', MUST_BE, "yes", 0),
@@ -98,8 +99,8 @@ all_modules = [
     
     ModuleNode(
         'classify_with_weighted_voting',
-        [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile,
-         GeneExpProcessing.SignalFile], ClassifyFile,
+        [SignalFile.ClassLabelFile, SignalFile.SignalFile,
+         SignalFile.SignalFile], ClassifyFile,
         OptionDef(
             'wv_num_features', 10,
             help="number of features for weighted voting"),
@@ -124,7 +125,7 @@ all_modules = [
     
     ModuleNode(
         'classify_with_random_forest',
-        [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
+        [SignalFile.ClassLabelFile, SignalFile.SignalFile],
         ClassifyFile,
         
         Constraint("contents", MUST_BE, 'class0,class1', 0),
@@ -144,7 +145,7 @@ all_modules = [
         help="classify with random forest method"),
     ModuleNode(
         'train_svm_model',
-        [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
+        [SignalFile.ClassLabelFile, SignalFile.SignalFile],
         SvmModel,
         Constraint("contents", MUST_BE, 'class0,class1', 0),
         Constraint("contents", MUST_BE, 'class0,class1,test', 1),
@@ -157,7 +158,7 @@ all_modules = [
         help="train data using svm method"),
     ModuleNode(
         'classify_with_svm',
-        [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile,
+        [SignalFile.ClassLabelFile, SignalFile.SignalFile,
          SvmModel],
         ClassifyFile,
         Constraint("contents", MUST_BE, 'class0,class1', 0),
@@ -179,7 +180,7 @@ all_modules = [
         help="classify with svm method"),
     ModuleNode(
         'run_loocv_weighted_voting',
-        [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
+        [SignalFile.ClassLabelFile, SignalFile.SignalFile],
         ClassifyFile,
         OptionDef(
             'wv_num_features', 10,
@@ -204,7 +205,7 @@ all_modules = [
         help="run loocv in weighted voting method"),
     ModuleNode(
         'run_loocv_svm',
-        [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
+        [SignalFile.ClassLabelFile, SignalFile.SignalFile],
         ClassifyFile,
         Constraint('contents', MUST_BE, 'class0,class1', 0),
         Constraint("contents", MUST_BE, 'class0,class1', 1),
@@ -224,7 +225,7 @@ all_modules = [
         help="run loocv in svm method"),
     ModuleNode(
         'run_loocv_random_forest',
-        [GeneExpProcessing.ClassLabelFile, GeneExpProcessing.SignalFile],
+        [SignalFile.ClassLabelFile, SignalFile.SignalFile],
         ClassifyFile,
         
         Constraint('contents', MUST_BE, 'class0,class1', 0),
@@ -246,7 +247,7 @@ all_modules = [
         help="run loocv in random forest method"),
     ModuleNode(
         'evaluate_prediction',
-        [GeneExpProcessing.ClassLabelFile, ClassifyFile], ClassifyFile,
+        [SignalFile.ClassLabelFile, ClassifyFile], ClassifyFile,
         Constraint("contents", MUST_BE, 'test', 0),
         Constraint("loocv", MUST_BE, 'no', 1),
         Constraint("actual_label", MUST_BE, 'no', 1),
@@ -267,7 +268,7 @@ all_modules = [
         help="plot prediction result"),
     ModuleNode(
         'plot_sample_pca_with_predictions',
-        [ClassifyFile, PcaAnalysis.PcaAnalysis],
+        [ClassifyFile, EV.PCAPlot],
         PredictionPCAPlot,
         Constraint(
             'classify_alg', CAN_BE_ANY_OF,
@@ -281,7 +282,7 @@ all_modules = [
         help="plot sample pca plot labeled with prediction result"),
     ModuleNode(
         'make_classify_report',
-        [GeneExpProcessing.SignalFile, ClassifyFile, ClassifyFile,
+        [SignalFile.SignalFile, ClassifyFile, ClassifyFile,
          PredictionPlot, PredictionPlot, PredictionPCAPlot, ClassifyFile,
          ClassifyFile, PredictionPlot, PredictionPlot, PredictionPCAPlot],
         ClassifyReportFile,

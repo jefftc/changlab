@@ -195,7 +195,7 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
 import BasicDataTypesNGS as NGS
-import GeneExpProcessing as GXP
+import SignalFile
 
 CALLERS = [
     "none", "mpileup", "gatk", "platypus", "varscan", "mutect", "mutect2",
@@ -1370,7 +1370,7 @@ all_modules = [
 
     ModuleNode(
         "add_gene_expression_to_simplevariantmatrix",
-        [_SimpleVariantMatrix3, GXP.SignalFile], _SimpleVariantMatrix3,
+        [_SimpleVariantMatrix3, SignalFile.SignalFile], _SimpleVariantMatrix3,
         Constraint("with_gxp", MUST_BE, "no", 0),
         Consequence("with_gxp", SET_TO, "yes"),
         Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"], 0),

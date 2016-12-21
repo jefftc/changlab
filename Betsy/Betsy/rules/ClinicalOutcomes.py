@@ -1,6 +1,6 @@
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import GeneExpProcessing
+import SignalFile
 
 
 ClinicalAnalysis = DataType(
@@ -29,7 +29,7 @@ all_data_types = [ClinicalAnalysis,ClinicalFile,EMTAnalysis,CellTypeFile]
 all_modules = [
     ModuleNode(
         'analyze_clinical_outcome',
-        [GeneExpProcessing.SignalFile,ClinicalFile],
+        [SignalFile.SignalFile,ClinicalFile],
         ClinicalAnalysis,
         OptionDef("outcome",help="outcome header"),
         OptionDef("dead",help="dead header"),
@@ -44,7 +44,7 @@ all_modules = [
         ),
     ModuleNode(
         'analyze_phenotype_for_EMT',
-         [GeneExpProcessing.SignalFile,CellTypeFile],EMTAnalysis,
+         [SignalFile.SignalFile,CellTypeFile],EMTAnalysis,
          OptionDef("geneset_value",help="geneset value for EMT analysis"),
          Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
          Constraint("contents",SAME_AS,0,1),

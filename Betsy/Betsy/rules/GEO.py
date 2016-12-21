@@ -8,7 +8,7 @@
 
 from Betsy.bie3 import *
 import BasicDataTypes as BDT
-import GeneExpProcessing as GXP
+import SignalFile
 
 
 
@@ -92,7 +92,7 @@ all_modules = [
 
     ModuleNode(
         "extract_geo_signal",
-        #GEOSeriesMatrixFile, GXP.UnprocessedSignalFile,
+        #GEOSeriesMatrixFile, SignalFile.UnprocessedSignalFile,
         GEOSeriesMatrixFile, GEOSignalFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
@@ -106,7 +106,7 @@ all_modules = [
 
     ModuleNode(
         "convert_geo_to_signal_file",
-        [GEOSignalFile, GEOPlatformAnnotationFile], GXP.UnprocessedSignalFile,
+        [GEOSignalFile, GEOPlatformAnnotationFile], SignalFile.UnprocessedSignalFile,
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS, 0),
         Consequence("contents", SAME_AS_CONSTRAINT),
         ),
@@ -148,7 +148,7 @@ all_modules = [
         #OptionDef("GSEID", help='GSEID for download family_soft file'),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS),
         Consequence("contents", SAME_AS_CONSTRAINT),
-        Consequence("labels_from", SET_TO_ONE_OF, ["title","description"]),
+        #Consequence("labels_from", SET_TO_ONE_OF, ["title","description"]),
         help="convert famliy soft file to RenameFile",
         ),
     ]

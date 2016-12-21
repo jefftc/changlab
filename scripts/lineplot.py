@@ -157,6 +157,12 @@ def main():
     group.add_argument(
         "--gene_name_header",
         help="Header for gene names to be used in the legend.")
+    group.add_argument(
+        "--yaxis_starts_at_0", action="store_true",
+        help="Y-axis should start at 0.")
+    group.add_argument(
+        "--legend_off", action="store_true",
+        help="Do not draw legend.")
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -225,6 +231,9 @@ def main():
     y_max = jmath.max(jmath.max(MATRIX._X))
     y_min = jmath.min(jmath.min(MATRIX._X))
     ylim = [y_min-1, y_max+1]
+    if args.yaxis_starts_at_0:
+        assert y_max > 0
+        ylim[0] = 0
 
     if not args.xlabel_off:
         labels = MATRIX.col_names(arrayio.COL_ID)
@@ -280,9 +289,10 @@ def main():
         R_fn("lines", x, y, lwd=lwd, col=col[i])
         R_fn("points", x, y, pch=19, cex=1, col=col[i])
 
-    R_fn(
-        "legend", "bottomleft", legend=gene_names, fill=col, cex=1,
-        inset=0.05, **{ "box.lwd" : 1.5 })
+    if not args.legend_off:
+        R_fn(
+            "legend", "bottomleft", legend=gene_names, fill=col, cex=1,
+            inset=0.05, **{ "box.lwd" : 1.5 })
         
     R_fn("par", R_var("op"))
     R_fn("dev.off")

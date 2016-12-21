@@ -121,6 +121,9 @@ txt2xls=/home/jchang/changlab/scripts/txt2xls
 genepattern=/home/xchen/chencode/scripts/run_genepattern.py
 arrayplot=/home/jchang/changlab/scripts/arrayplot2.py
 lineplot=/home/jchang/changlab/scripts/lineplot.py
+pcaplot=/home/jchang/changlab/scripts/pcaplot.py
+boxplot=/home/jchang/changlab/scripts/boxplot.py
+calc_venn=/home/jchang/changlab/scripts/calc_venn.py
 
 # TCGA.
 download_tcga=/home/xchen/chencode/scripts/download_tcga.py

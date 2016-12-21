@@ -12,9 +12,12 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import cluster30
         from Betsy import module_utils as mlib
+        import cluster_genes_by_hierarchical
 
         filelib.safe_mkdir(out_path)
         metadata = {}
+
+        raise NotImplementedError
 
         DISTANCE_MEASURES = cluster30.DIST2ID.keys()
         YESNO = ["yes", "no"]
@@ -45,6 +48,8 @@ class Module(AbstractModule):
 
         # Find the output files and name them appropriately.
         cluster_files = cluster30._find_cluster_files(jobname)
+        cluster_genes_by_hierarchical.fix_cluster30_dup_header(
+            cluster_files["cdt"])
 
         opj = os.path.join
         out_cdt_file = opj(out_path, "signal.cdt")
@@ -67,6 +72,3 @@ class Module(AbstractModule):
         #original_file = module_utils.get_inputid(antecedents.identifier)
         #filename = 'cluster_file_' + original_file + '.cdt'
         #return filename
-
-
-

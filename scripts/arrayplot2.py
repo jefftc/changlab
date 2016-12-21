@@ -1700,6 +1700,7 @@ def _choose_gene_label(MATRIX):
     # Prioritize some potential ones.
     IDS = [
         arrayio.GENE_SYMBOL, "Gene.Symbol", "Gene Symbol", "Symbol",
+        "Gene Name",
         #arrayio.GENE_DESCRIPTION, "Description",
         "DESCRIPTION",       # For GCT files.  Use the pretty name.
         "NAME",
@@ -2104,7 +2105,7 @@ def main():
         options.width, options.height, options.scale_border,
         options.grid, options.scale_grid,
         options.color_scheme, options.inverse,
-        signal_0, signal_1,  options.black0,
+        signal_0, signal_1, options.black0,
         options.pvalue,
         # Labels
         options.label_genes, options.label_arrays,

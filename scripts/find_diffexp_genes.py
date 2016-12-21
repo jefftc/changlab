@@ -408,8 +408,7 @@ def main():
 
     import arrayio
     from genomicode import arraysetlib
-    #from genomicode import binreg
-    #from genomicode import jmath
+    from genomicode import parselib
     
     parser = argparse.ArgumentParser(
         description="Find differentially expressed genes.")
@@ -574,7 +573,9 @@ def main():
     # Make a CLS file, if necessary.
     if args.cls_file:
         names, classes = arraysetlib.read_cls_file(args.cls_file)
-        assert len(names) == 2, "I must have 2 classes."
+        assert len(names) == 2, \
+               "I can only handle 2 classes.  Found %d: %s" % (
+            len(names), parselib.pretty_list(names))
         name1, name2 = names
         # Make sure classes has only 0, 1, or None.
         for i, x in enumerate(classes):

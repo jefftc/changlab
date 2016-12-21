@@ -30,7 +30,7 @@ def boxplot(*args,**keywds):
     bottom      the bottom margin distance
     """
     assert len(args) == 1, "Specify data"
-    data,=args
+    data, = args
     data=[numpy.array(i) for i in data]
     xlabel = keywds.get("xlabel",None)
     ylabel = keywds.get("ylabel",None)
@@ -321,8 +321,8 @@ def barplot(*args,**keywds):
         assert len(box_label)==len(mean)
     ind = numpy.arange(len(mean))
     width = 0.35 
-    fig=pylab.figure()
-    bp = pylab.bar(ind,mean,width,yerr=std,color='y')
+    fig = pylab.figure()
+    bp = pylab.bar(ind, mean, width, yerr=std, color='y', align="center")
     
     if xlabel:
         pylab.xlabel(xlabel)
@@ -339,7 +339,8 @@ def barplot(*args,**keywds):
             for i in range(12):
                 label[index[i]] = box_label[index[i]]
         
-        pylab.xticks(ind+width/2.,label,rotation=xtick_rotation)
+        #pylab.xticks(ind+width/2.,label,rotation=xtick_rotation)
+        pylab.xticks(ind, label, rotation=xtick_rotation)
     if keywds.get('ylim'):
         pylab.ylim(keywds.get('ylim'))
     if keywds.get('ytick_pos') and keywds.get('yticks'):

@@ -136,7 +136,7 @@ debug_print
 #
 # _iter_upper_diag
 # _intersect
-# _product_branches     # for _find_paths_by_start_ids_hh only
+# _product_branches     # for _find_paths_by_start_ids_hh only (mostly)
 # _is_subset
 # _flatten
 # _flatten1_intlist
@@ -245,8 +245,8 @@ DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = False
 #DEFAULT_INPUT_ATTRIBUTE_IS_ALL_VALUES = True    # DON'T DO THIS.
 
 # Set some limits on the backchaining algorithm.
-MAX_NETWORK_SIZE = 2*1024        # Number of nodes in network
-MAX_BACKCHAIN_NODES = 1024       # Combos of antecedents for a module.
+MAX_NETWORK_SIZE = 4*1024        # Number of nodes in network
+MAX_BACKCHAIN_NODES = 2*1024     # Combos of antecedents for a module.
 MAX_BACKCHAIN_PATHWAYS = 64*1024  # Combos of antecedent pathways for a module.
 
 
@@ -588,7 +588,8 @@ class DataType:
     def __init__(self, name, *attribute_defs, **keywds):
         assert type(name) is type("")
         for x in attribute_defs:
-            assert isinstance(x, AttributeDef), repr(x)
+            assert isinstance(x, AttributeDef), \
+                   "Not AttributeDef in DataType %r:\n%r" % (name, x)
         for x in keywds:
             assert x in ["help", "no_file"]
 
@@ -869,7 +870,8 @@ class ModuleNode:
         # list of DataType objects.  Make sure it is always a list of
         # objects.  If it is a single object, make it a list.
         assert type(in_datatypes) is type([]) or \
-               isinstance(in_datatypes, DataType)
+               isinstance(in_datatypes, DataType), \
+               "Invalid antecedents in module %r." % name
         if type(in_datatypes) != type([]):
             in_datatypes = [in_datatypes]
         for x in in_datatypes:
@@ -969,24 +971,31 @@ class ModuleNode:
         in_datatype = in_datatypes[i]
 
         assert constraint.behavior in [MUST_BE, CAN_BE_ANY_OF, SAME_AS]
-        if constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]:
-            assert in_datatype.is_valid_attribute_name(constraint.name), \
+        if constraint.behavior in [MUST_BE, CAN_BE_ANY_OF]: 
+           assert in_datatype.is_valid_attribute_name(constraint.name), \
                 ("Module %r: Invalid attribute %r for datatype %r." %
                  (name, constraint.name, in_datatype.name))
-            assert in_datatype.is_valid_attribute_value(
+           assert in_datatype.is_valid_attribute_value(
                 constraint.name, constraint.arg1), \
                 ("Module %r: Invalid value %r for attribute %r." %
                  (name, constraint.arg1, constraint.name))
         elif constraint.behavior == SAME_AS:
             # Make sure the datatype has this attribute.
             dt = in_datatypes[constraint.arg1]
-            assert dt.is_valid_attribute_name(constraint.name)
+            assert dt.is_valid_attribute_name(constraint.name), (
+                "Module %r: %r is not a known attribute for datatype %r" %
+                (name, constraint.name, dt.name))
+            dt2 = in_datatypes[constraint.input_index]
+            assert dt2.is_valid_attribute_name(constraint.name), (
+                "Module %r: %r is not a known attribute for datatype %r" %
+                (name, constraint.name, dt2.name))
             # Make sure value can be resolved.
             assert len(in_datatypes) > 1, (
                 "Module %r: SAME_AS constraint requires at least two input "
                 "datatypes." % name)
             const = _resolve_constraint(constraint, constraints)
             assert const.behavior in [MUST_BE, CAN_BE_ANY_OF]
+            
             #assert constraint.arg1 < len(in_datatypes)
             #assert constraint.arg1 != constraint.input_index
             ## Make sure there is a MUST_BE or CAN_BE_ANY_OF constraint
@@ -1026,8 +1035,8 @@ class ModuleNode:
         if consequence.behavior in [SET_TO, SET_TO_ONE_OF, BASED_ON_DATA]:
             assert out_datatype.is_valid_attribute_value(
                 consequence.name, consequence.arg1), \
-                "'%s' is not a valid value for '%s' in module '%s'" % (
-                consequence.arg1, consequence.name, name)
+                "'%s' is not a valid value for '%s.%s' in module '%s'" % (
+                consequence.arg1, out_datatype.name, consequence.name, name)
         elif consequence.behavior == SAME_AS_CONSTRAINT:
             # Make sure index on input variable is reasonable.
             index = consequence.arg1  # index of input variable
@@ -3003,6 +3012,7 @@ def _find_paths_by_start_ids_hh(
     # case 2 below) by doing pairwise searches over branches.  Keep
     # track of incompatible pairs and skip combinations that contain
     # those pairs.
+    # Save (nid1, nid2), (pid1, pid2) symmetrically here.
     based_on_data_conflicts = {}  # (nid1, nid2) -> set of (pid1, pid2)
     # Make a list of all the modules with BASED_ON_DATA
     # attributes.
@@ -3095,11 +3105,13 @@ def _find_paths_by_start_ids_hh(
         # Make sure there aren't too many combinations to search.
         branchlen = [len(nodeid2pathways[x]) for x in combo_ids]
         all_branches = [range(x) for x in branchlen]
-        total = jmath.prod(branchlen)
-        #total = 0
-        #for x in _product_branches(
-        #    combo_ids, based_on_data_conflicts, *all_branches):
-        #    total += 1
+        #total = jmath.prod(branchlen)
+        total = 0
+        for x in _product_branches(
+            combo_ids, all_branches, based_on_data_conflicts):
+            total += 1
+            if total >= MAX_BACKCHAIN_PATHWAYS:
+                break
 
         if DEBUG_FIND_PATHS:
             x = []
@@ -3110,39 +3122,38 @@ def _find_paths_by_start_ids_hh(
                 DEBUG_FIND_PATHS, "[%d] Found %d possible combinations (%s)." %
                 (node_id, total, x))
 
-        ## DEBUG: Print out the pathways if there are too many
-        ## combinations.
-        #if total >= MAX_BACKCHAIN_PATHWAYS:
-        #    if False:
-        #        # Print out all pathways for one antecedent.
-        #        I = [0, 1]  # which one to print?
-        #        for j, i_combo in enumerate(I):
-        #            nid = combo_ids[i_combo]
-        #            for i, pathway in enumerate(nodeid2pathways[nid]):
-        #                filename = "backchain-%d-%02d.png" % (j, i)
-        #                print "[%02d:%02d] %s" % (
-        #                    i, len(nodeid2pathways[nid]), filename)
-        #                transitions = []
-        #                for n1, next_ids in pathway.transitions.iteritems():
-        #                    for n2 in next_ids:
-        #                        transitions.append((n1, n2))
-        #                plot_network_gv(
-        #                    filename, network, bold=pathway.node_ids,
-        #                    bold_transitions=transitions,
-        #                    highlight_green=pathway.start_ids,
-        #                    highlight_orange=pathway.missing_ids,
-        #                    highlight_yellow=pathway.node_ids, verbose=True)
-        #    module_name = get_node_name(network.nodes[node_id])
-        #    dtype_names = [get_node_name(network.nodes[x]) for x in combo_ids]
-        #    msg = []
-        #    msg.append("Too many paths [%d] %s (%s):" % (
-        #        node_id, module_name, parselib.pretty_int(total)))
-        #    for i in range(len(branchlen)):
-        #        x = "  [%d] %s (%d)" % (
-        #            combo_ids[i], dtype_names[i], branchlen[i])
-        #        msg.append(x)
-        #    msg = "\n".join(msg)
-        #    assert total < MAX_BACKCHAIN_PATHWAYS, msg
+        # DEBUG: Print out the pathways if there are too many
+        # combinations.
+        if total >= MAX_BACKCHAIN_PATHWAYS:
+            if False:
+                # Print out all pathways for one antecedent.
+                I = [0, 1]  # which one to print?
+                for j, i_combo in enumerate(I):
+                    nid = combo_ids[i_combo]
+                    for i, pathway in enumerate(nodeid2pathways[nid]):
+                        filename = "backchain-%d-%02d.png" % (j, i)
+                        print "[%02d:%02d] %s" % (
+                            i, len(nodeid2pathways[nid]), filename)
+                        transitions = []
+                        for n1, next_ids in pathway.transitions.iteritems():
+                            for n2 in next_ids:
+                                transitions.append((n1, n2))
+                        plot_network_gv(
+                            filename, network, bold=pathway.node_ids,
+                            bold_transitions=transitions,
+                            highlight_green=pathway.start_ids,
+                            highlight_orange=pathway.missing_ids,
+                            highlight_yellow=pathway.node_ids, verbose=True)
+            module_name = get_node_name(network.nodes[node_id])
+            dtype_names = [get_node_name(network.nodes[x]) for x in combo_ids]
+            msg = []
+            msg.append("Too many paths [%d] %s:" % (node_id, module_name))
+            for i in range(len(branchlen)):
+                x = "  [%d] %s (%d)" % (
+                    combo_ids[i], dtype_names[i], branchlen[i])
+                msg.append(x)
+            msg = "\n".join(msg)
+            assert total < MAX_BACKCHAIN_PATHWAYS, msg
 
         #if not PRUNE_PATHS:
         #    # No branches indicate an error somewhere.
@@ -3232,7 +3243,7 @@ def _find_paths_by_start_ids_hh(
         #all_branches = [range(x) for x in branchlen]
         #for bnum, branch_ids in enumerate(itertools.product(*all_branches)):
         for bnum, branch_ids in enumerate(_product_branches(
-            combo_ids, based_on_data_conflicts, *all_branches)):
+            combo_ids, all_branches, based_on_data_conflicts)):
             # combos        [(1, 2, 5), (1, 3, 5), (4, 3, 5)]
             # combo_ids     (1, 2, 5)
             # cnum          0             Index of combo_ids into combos.
@@ -5777,10 +5788,9 @@ def check_moduledb(moduledb):
 
     # Make sure no duplicate modules.
     dups = ["%s (%d times)" % (x, seen[x]) for x in seen if seen[x] > 1]
-    msg = ""
-    x = dups
-    if len(x) > 5:
-        x = x[:5] + ["... plus %s more" % (len(dups) - 5)]
+    msg = "\n".join(dups)
+    if len(dups) > 5:
+        x = dups[:5] + ["... plus %s more" % (len(dups) - 5)]
         msg = "\n".join(x)
     assert not dups, "Duplicate modules: %s" % msg
 
@@ -6039,7 +6049,7 @@ def plot_pathways_gv(filestem, network, pathways, max_pathways=None,
             bold_transitions=transitions,
             highlight_green=pathway.start_ids,
             highlight_orange=pathway.missing_ids,
-            highlight_yellow=x, verbose=True)
+            highlight_yellow=x, verbose=verbose)
 
 
 def read_network(file_or_handle):
@@ -6652,6 +6662,7 @@ def _bc_to_input_ids(
     # search to specific input or output IDs.
     import itertools
     from genomicode import jmath
+    from genomicode import parselib
 
     if not nodeid2parents:
         nodeid2parents = _make_parents_dict(network)
@@ -6692,9 +6703,75 @@ def _bc_to_input_ids(
                 network, module_id, i, network.nodes[x], custom_attributes)]
             args[i] = x
 
+    # Optimize: Ignore inputs that violate SAME_AS constraints.
+    # Pull out the SAME_AS constraints.
+    node = network.nodes[module_id]
+    x = node.constraints
+    x = [x for x in x if x.behavior == SAME_AS]
+    same_as_cons = x
+    same_as_values = {}  # (i1, i2) -> set of attributes
+    for cons in same_as_cons:
+        i1, i2 = cons.arg1, cons.input_index
+        same_as_values.setdefault((i1, i2), set()).update([cons.name])
+        same_as_values.setdefault((i2, i1), set()).update([cons.name])
+    same_as_conflicts = {}  # (arg_i1, arg_i2) -> set of (nid1, nid2)
+    for (i1, i2), attributes in same_as_values.iteritems():
+        for nid1, nid2 in itertools.product(args[i1], args[i2]):
+            node1, node2 = network.nodes[nid1], network.nodes[nid2]
+            for name in attributes:
+                assert name in node1.attributes, "%s %s" % (
+                    node1.datatype.name, name)
+                assert name in node2.attributes, "%s %s" % (
+                    node2.datatype.name, name)
+                attr1 = node1.attributes[name]
+                attr2 = node2.attributes[name]
+                if _is_attribute_compatible(attr1, attr2) or \
+                   _is_attribute_compatible(attr2, attr1):
+                    # Compatible, don't add to conflicts.
+                    continue
+                if (i1, i2) not in same_as_conflicts:
+                    same_as_conflicts[(i1, i2)] = set()
+                if (i2, i1) not in same_as_conflicts:
+                    same_as_conflicts[(i2, i1)] = set()
+                same_as_conflicts[(i1, i2)].update([(nid1, nid2)])
+                same_as_conflicts[(i2, i1)].update([(nid2, nid1)])
+
     l = [len(x) for x in args]
-    total = jmath.prod(l)
-    assert total < MAX_BACKCHAIN_NODES, "Too many possible inputs [%d]" % total
+    #old_total = jmath.prod(l)
+    # If there are same_as_conflicts, the total number of
+    # possibilities is probably much less.
+
+    I = range(len(args))
+    total = 0
+    for x in _product_branches(I, args, same_as_conflicts):
+        total += 1
+        if total >= MAX_BACKCHAIN_NODES:
+            break
+        
+    if total >= MAX_BACKCHAIN_NODES:
+        # Try to diagnose why there are so many backchain nodes.
+        msg = []
+        p = msg.append
+        p("Input data types:")
+        for i in range(len(module.in_datatypes)):
+            node_ids = args[i]   # prior nodes for in_datatypes[i]
+            nodes = [network.nodes[x] for x in node_ids]
+            p("%d.  %s (%d)" % (i, module.in_datatypes[i].name, len(node_ids)))
+            attr2counts = {}
+            for i1 in range(len(nodes)-1):
+                for i2 in range(i1+1, len(nodes)):
+                    n1, n2 = nodes[i1], nodes[i2]
+                    x, x, attrs = _score_same_data(n1, n2)
+                    for a in attrs:
+                        attr2counts[a] = attr2counts.get(a, 0) + 1
+            for a in attr2counts:
+                p("    %r different in %d pairs of antecedents." % (
+                    a, attr2counts[a]))
+        msg = "\n".join(msg)
+        x1 = parselib.pretty_int(total)
+        x2 = get_node_name(network.nodes[module_id])
+        assert total < MAX_BACKCHAIN_NODES, \
+               "Too many inputs to module %r.\n%s" % (x2, msg)
 
     valid = []
     # This doesn't work.  The same module can have multiple inputs and
@@ -6710,7 +6787,10 @@ def _bc_to_input_ids(
 
     # The multiple in_datatypes case is harder, because we don't know
     # the order of the inputs.
-    for input_ids in itertools.product(*args):
+
+    # Save (arg_i1, arg_i2), (nid1, nid2) symmetrically here.
+    I = range(len(args))
+    for input_ids in _product_branches(I, args, same_as_conflicts):
         assert len(input_ids) == len(module.in_datatypes)
 
         # Don't check again if already done.
@@ -7029,7 +7109,7 @@ def _resolve_constraint(constraint, all_constraints):
     # If this should be the same as another constraint, then check the
     # other constraint.
     # CONSEQUENCE   NAME
-    # CONSTRAINT 1  NAME  CAN_BE_AN_OF
+    # CONSTRAINT 1  NAME  CAN_BE_ANY_OF
     # CONSTRAINT 2  NAME  SAME_AS  1
     # CONSTRAINT 3  NAME  SAME_AS  2
     #
@@ -7045,9 +7125,14 @@ def _resolve_constraint(constraint, all_constraints):
         x = [x for x in all_constraints if x.name == const.name]
         x = [x for x in x if x.input_index == const.arg1]
         assert len(x) > 0, (
-            "%r SAME_AS %d, but datatype %d has no constraint on %r." %
-            (const.name, const.arg1, const.arg1, const.name))
-        assert len(x) == 1
+            "%r: %d SAME_AS %d, but datatype %d has no constraint on %r." %
+            (const.name, const.arg1, const.input_index,
+             const.arg1, const.name))
+        assert len(x) == 1, (
+            "%r: %d SAME_AS %d, "
+            "and datatype %d has multiple constraints on %r." %
+            (const.name, const.arg1, const.input_index,
+             const.arg1, const.name))
         const = x[0]
     return const
 
@@ -8725,33 +8810,44 @@ def _intersect(x, y):
     return list(set(x).intersection(y))
 
 
-
-def _product_branches(combo_ids, conflicts, *branch_ids):
-    # branch_ids is a list of lists
-    assert len(combo_ids) == len(branch_ids)
-    if not combo_ids:
-        yield []
+def _product_branches_h(combo_ids_L, branch_ids_L, combo_ids_R, branch_ids_R,
+                        conflicts):
+    # combo_ids_L    list (previous history)
+    # branch_ids_L   list (previous history)
+    # combo_ids_R    list (to try)
+    # branch_ids_R   list of lists  (to try)
+    # Moving from right to left.
+    assert len(combo_ids_L) == len(branch_ids_L)
+    assert len(combo_ids_R) == len(branch_ids_R)
+    if not combo_ids_R:
+        yield ()
         return
-    nid1 = combo_ids[0]
-    for pid1 in branch_ids[0]:
-        # Peek at the next element and short circuit the search if
-        # there is a conflict.
-        c_ids = combo_ids[1:]
-        b_ids = list(branch_ids[1:])
-        
-        if len(c_ids) >= 1:
-            nid2 = c_ids[0]
-            if (nid1, nid2) in conflicts:
-                x = conflicts[(nid1, nid2)]
-                bids = [pid2 for pid2 in b_ids[0]
-                        if (pid1, pid2) not in x]
-                #skipped = [(pid1, pid2) for pid2 in next_branch_ids[0]
-                #           if (pid1, pid2) in x]
-                if not bids:
-                    continue
-                b_ids[0] = bids
-        for x in _product_branches(c_ids, conflicts, *b_ids):
-            yield [pid1] + x
+
+    cid_r = combo_ids_R[0]
+    for bid_r in branch_ids_R[0]:
+        # Make sure it doesn't conflict with anything that's come
+        # before.
+        conflict = False
+        for i in range(len(combo_ids_L)):
+            cid_l = combo_ids_L[i]
+            bid_l = branch_ids_L[i]
+            x = conflicts.get((cid_l, cid_r), [])
+            if (bid_l, bid_r) in x:
+                conflict = True
+                break
+        if conflict:
+            continue
+        for x in _product_branches_h(
+            combo_ids_L+[cid_r], branch_ids_L+[bid_r],
+            combo_ids_R[1:], branch_ids_R[1:], conflicts):
+            yield (bid_r,) + x
+
+
+def _product_branches(combo_ids, branch_ids, conflicts):
+    # combo_ids is a list
+    # branch_ids is a list of lists
+    for x in _product_branches_h([], [], combo_ids, branch_ids, conflicts):
+        yield x
 
 
 def _is_subset(x, y):

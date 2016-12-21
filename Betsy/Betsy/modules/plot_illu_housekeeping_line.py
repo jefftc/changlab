@@ -7,20 +7,35 @@ class Module(AbstractModule):
     def run(
         self, network, antecedents, out_attributes, user_options, num_cores,
         outfile):
-        from Betsy import module_utils
         from genomicode import filelib
-        
-        in_data = antecedents
-        module_utils.plot_line_keywd(
-            in_data.identifier, 'housekeeping', outfile)
-        assert filelib.exists_nz(outfile), (
-            'the output file %s for plot_illu_housekeeping_line fails' %
-            outfile)
+        from genomicode import parallel
+        from Betsy import module_utils as mlib
 
+        #module_utils.plot_line_keywd(
+        #    in_data.identifier, 'housekeeping', outfile)
+
+        in_data = antecedents
+        metadata = {}
+
+        #module_utils.plot_line_keywd(in_data.identifier, 'biotin', outfile)
+        lineplot = mlib.get_config("lineplot", which_assert_file=True)
+
+        sq = parallel.quote
+        cmd = [
+            sq(lineplot),
+            "--gene_names", "housekeeping",
+            "--mar_bottom", 1.50,
+            "--yaxis_starts_at_0",
+            "--legend_off",
+            sq(in_data.identifier),
+            sq(outfile),
+            ]
+        cmd = " ".join(map(str, cmd))
+        parallel.sshell(cmd)
+        metadata["commands"] = [cmd]
+        filelib.assert_exists_nz(outfile)
+        return metadata
 
 
     def name_outfile(self, antecedents, user_options):
-        from Betsy import module_utils
-        original_file = module_utils.get_inputid(antecedents.identifier)
-        filename = 'housekeeping_plot_' + original_file + '.png'
-        return filename
+        return "housekeeping.png"

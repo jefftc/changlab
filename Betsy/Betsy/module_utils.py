@@ -58,6 +58,8 @@ write_orientation
 read_stranded
 write_stranded
 
+txt2xls
+
 """
 #FMT = "%a %b %d %H:%M:%S %Y"
 
@@ -1107,6 +1109,7 @@ def get_user_option(
     # not_empty means I will make sure the value is not an empty value.
     # required means the user must supply a value (even if default given).
     # allowed_values is a list of the allowed values of this option.
+    # If given, will only accept this value and empty string.
     # type should be a function that converts the type.
     import os
     
@@ -1114,11 +1117,15 @@ def get_user_option(
     value = user_options[name]
     if not_empty:
         assert value, "Empty user option: %s" % name
-    if allowed_values:
+    if value and allowed_values:
         assert value in allowed_values, "Invalid option for %s: %s" % (
             name, value)
-    if value and type is not None:
-        value = type(value)
+    if type is not None:
+        if value:
+            value = type(value)
+        else:
+            assert value == ""
+            value = None
     if value and check_file:
         assert os.path.exists(value), "File not found: %s" % value
     return value
@@ -1256,3 +1263,29 @@ def write_stranded(stranded, filename):
     json.dump(x, handle, indent=2)
 
 
+def txt2xls(filename, bold_header=False, unlink_textfile=True):
+    import os
+    from genomicode import filelib
+    from genomicode import parallel
+
+    filelib.assert_exists_nz(filename)
+    assert filename.lower().endswith(".txt")
+    xls_filename = "%s.xls" % filename[:-4]
+    
+    txt2xls = get_config("txt2xls", which_assert_file=True)
+    sq = parallel.quote
+    cmd = [
+        sq(txt2xls),
+        ]
+    if bold_header:
+        cmd += ["-b"]
+    cmd += [
+        sq(filename)
+        ]
+    cmd = " ".join(cmd)
+    cmd = "%s > %s" % (cmd, xls_filename)
+    os.system(cmd)
+    filelib.assert_exists_nz(xls_filename)
+
+    if unlink_textfile:
+        os.unlink(filename)

@@ -1836,6 +1836,32 @@ def main():
             #write_network(args.network_json, network) 
         raise
 
+    if args.output_file and node_dict and 0 in node_dict:
+        print "Saving output %s to %s." % (outtype, args.output_file)
+        sys.stdout.flush()
+        output_file = node_dict[0].identifier
+        reportlib.copy_file_or_path(output_file, args.output_file)
+
+    # See what else to save.
+    also_save = []  # list of (arg, "lowest" or "highest")
+    for arg in args.also_save_lowest:
+        also_save.append((arg, "lowest"))
+    for arg in args.also_save_highest:
+        also_save.append((arg, "highest"))
+    for arg, which_one in also_save:
+        # Format: <datatype>,<file_or_path>
+        x = arg.split(",", 1)
+        assert len(x) == 2, "Invalid also_save: %s" % arg
+        dname, out_filename = x
+        if which_one == "lowest":
+            node_id = _find_lowest_datatype(network, dname, node_dict.keys())
+        else:
+            node_id = _find_highest_datatype(network, dname, node_dict.keys())
+        assert node_id, "Unable to find: %s" % dname
+        in_filename = node_dict[node_id].identifier
+        print "Saving %s to %s." % (dname, out_filename)
+        reportlib.copy_file_or_path(in_filename, out_filename)
+        
     # Draw the final network.
     node_dict = node_dict or {}
     transitions = transitions or {}
@@ -1874,32 +1900,6 @@ def main():
     #    print "Writing detailed network: %s." % args.network_text
     #    bie3.print_network(network, outhandle=args.network_text)
 
-    if args.output_file and node_dict and 0 in node_dict:
-        print "Saving output %s to %s." % (outtype, args.output_file)
-        sys.stdout.flush()
-        output_file = node_dict[0].identifier
-        reportlib.copy_file_or_path(output_file, args.output_file)
-
-    # See what else to save.
-    also_save = []  # list of (arg, "lowest" or "highest")
-    for arg in args.also_save_lowest:
-        also_save.append((arg, "lowest"))
-    for arg in args.also_save_highest:
-        also_save.append((arg, "highest"))
-    for arg, which_one in also_save:
-        # Format: <datatype>,<file_or_path>
-        x = arg.split(",", 1)
-        assert len(x) == 2, "Invalid also_save: %s" % arg
-        dname, out_filename = x
-        if which_one == "lowest":
-            node_id = _find_lowest_datatype(network, dname, node_dict.keys())
-        else:
-            node_id = _find_highest_datatype(network, dname, node_dict.keys())
-        assert node_id, "Unable to find: %s" % dname
-        in_filename = node_dict[node_id].identifier
-        print "Saving %s to %s." % (dname, out_filename)
-        reportlib.copy_file_or_path(in_filename, out_filename)
-        
     print "Done."
 
 
