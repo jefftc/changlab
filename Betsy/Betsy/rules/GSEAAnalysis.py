@@ -10,9 +10,8 @@ GSEA_DATABASE = [
     'gene_ontology:process', 'motif', 'motif:tfactor', 'positional',
     ]
 
-
-GseaFile = DataType(
-    "GseaFile",
+GSEAResults = DataType(
+    "GSEAResults",
     AttributeDef(
         "contents", BDT.CONTENTS, 'unspecified', 'unspecified',
         help="contents"),
@@ -27,21 +26,31 @@ GseaFile = DataType(
             'motif:tfactor', 'positional'],
         "gene_ontology:process", "gene_ontology:process",
         help="geneset database"),
-    help="Gsea file",
+    AttributeDef(
+        "unique_genes", ["average_genes", "high_var", "first_gene"],
+        "high_var", "high_var", help="method to get unique genes"),
+    help="Folder containing one or more GSEA analyses.",
     )
 
-all_data_types = [GseaFile]
+all_data_types = [
+    GSEAResults,
+    ]
 
 all_modules=[
     ModuleNode(
-        'annotate_genes_with_gsea',
-        [SignalFile.ClassLabelFile, SignalFile.SignalFile],
-        GseaFile,
-        Constraint("contents",CAN_BE_ANY_OF,BDT.CONTENTS,0),
-        Constraint("format",MUST_BE,'gct',1),
-        Constraint("logged",MUST_BE,'yes',1),
-        Constraint("contents",SAME_AS,0,1),
-        Consequence("contents",SAME_AS_CONSTRAINT,0),
+        "annotate_genes_with_gsea",
+        [SignalFile.SignalFile, SignalFile.ClassLabelFile],
+        GSEAResults,
+        Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS,0),
+        Constraint("contents", SAME_AS, 0, 1),
+        Consequence("contents", SAME_AS_CONSTRAINT, 0),
+        Constraint("format", MUST_BE, 'gct', 0),
+        Constraint("logged", MUST_BE, 'yes', 0),
+        Constraint("annotate", MUST_BE, "yes", 0),
+        Constraint(
+            "unique_genes", CAN_BE_ANY_OF, 
+            ["average_genes", "high_var", "first_gene"], 0),
+        Consequence("unique_genes", SAME_AS_CONSTRAINT, 0),
         Consequence("permutation_type", SET_TO_ONE_OF, GSEA_PERMUTATION),
         Consequence("geneset_database", SET_TO_ONE_OF, GSEA_DATABASE),
         help="annotate genes with gsea method"),

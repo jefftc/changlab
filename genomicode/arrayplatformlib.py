@@ -5,6 +5,7 @@ score_annotations        Given annotations, score for each platform.
 score_matrix
 
 find_header              Given a category, try to find the header of a matrix.
+categorize_headers
 chipname2filename
 normalize_id             Normalize a gene name for comparison.
 normalize_ids            Normalize a list of IDs.
