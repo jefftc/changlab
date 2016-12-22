@@ -24,7 +24,7 @@ def main():
     from genomicode import alignlib
 
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("reference_genome", help="fastq file")
+    parser.add_argument("reference_genome", help="fasta file")
 
     parser.add_argument(
         "-j", dest="num_procs", type=int, default=1,

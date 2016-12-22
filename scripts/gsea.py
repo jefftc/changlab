@@ -29,6 +29,14 @@ platform2gpplatform = {
     "Entrez_Symbol_human" : None,
     "entrez_ID_symbol_human" : None,
     # Missing entrez_ID_human
+
+    # Illumina_MusRef8_v1_1.chip uses IDs like:
+    #   0005570647
+    #   5360093       (E2f1)
+    # Not like:
+    #   ILMN_1231138  (E2f1)
+    # Not compatible with the probe ID's I'm using.
+    #"MouseRef_8" : "Illumina_MusRef8_v1_1.chip",
     }
 
 
@@ -185,7 +193,9 @@ def fix_class_order(MATRIX, name1, name2, classes):
 def check_matrix(X):
     import re
     import arrayio
-    #from genomicode import hashlib
+    import copy
+    from genomicode import hashlib
+    from genomicode import AnnotationMatrix
 
     assert arrayio.gct_format.is_matrix(X)
 
@@ -207,19 +217,24 @@ def check_matrix(X):
             bad_names.append("<blank>")
         elif re.search("[^a-zA-Z0-9_-]", name):
             bad_names.append(name)
+    #assert not bad_names, "Bad sample name: %s" % ", ".join(bad_names)
             
     # If there are bad names, try to fix them.
-    #if bad_names:
-    #    sample_names_h = [hashlib.hash_var(x) for x in sample_names]
-    #    # If there are no duplicates, use these sample names.
-    #    raise NotImplementedError
-    assert not bad_names, "Bad sample name: %s" % ", ".join(bad_names)
+    if bad_names:
+        X = copy.deepcopy(X)
+        sample_names = [hashlib.hash_var(x) for x in sample_names]
+        sample_names = AnnotationMatrix.uniquify_headers(sample_names)
+        header = X._resolve_synonym(
+            arrayio.tdf.SAMPLE_NAME, X.col_names, X._synonyms)
+        X._col_names[header] = sample_names
 
     # Make sure sample names are unique.
     seen = {}
     for i, name in enumerate(sample_names):
         assert name not in seen, "Duplicate sample name: %s" % name
         seen[name] = 1
+
+    return X
 
 
 def check_classes(classes, permutation_type):
@@ -398,7 +413,7 @@ def main():
             args.no_collapse_dataset = True
 
     # Do some sanity checking to make sure imputs are reasonable.
-    check_matrix(MATRIX)
+    MATRIX = check_matrix(MATRIX)
     check_classes(classes, args.permutation_type)
     
     # Set up file names.
@@ -499,7 +514,7 @@ def main():
     if x.find("RRuntimeWarning") >= 0 and \
            x.endswith("warnings.warn(x, RRuntimeWarning)"):
         x = ""
-    assert not x, "%s\n%s" % (cmd, data)
+    assert not x, "%s\n%s" % (" ".join(map(str, cmd)), data)
 
     error_file = os.path.join(args.outpath, "stderr.txt")
     assert not os.path.exists(error_file), (

@@ -8,6 +8,7 @@ class Module(AbstractModule):
         self, network, antecedents, out_attributes, user_options, num_cores,
         out_path):
         import os
+        
         data_node, cls_node = antecedents
         if not os.path.exists(out_path):
             os.mkdir(out_path)
@@ -15,6 +16,7 @@ class Module(AbstractModule):
 
         algorithm = out_attributes["de_algorithm"]
         metadata["algorithm"] = algorithm
+        
         commands = calc_diffexp(
             data_node.identifier, cls_node.identifier, user_options, num_cores,
             out_path, algorithm)
