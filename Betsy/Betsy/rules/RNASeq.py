@@ -383,6 +383,7 @@ all_modules = [
             ),
         Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO, 0),
         Constraint("adapters_trimmed", SAME_AS, 0, 3),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
 
         # Optimization.  Don't allow this.
         #Constraint("mouse_reads_subtracted", CAN_BE_ANY_OF, YESNO, 0),
@@ -425,6 +426,8 @@ all_modules = [
         #Consequence("contents", SAME_AS_CONSTRAINT, 0),
         Constraint("aligner", CAN_BE_ANY_OF, NGS.RNA_ALIGNERS),
         Consequence("aligner", SAME_AS_CONSTRAINT),
+        Constraint("adapters_trimmed", CAN_BE_ANY_OF, YESNO),
+        Consequence("adapters_trimmed", SAME_AS_CONSTRAINT),
         Consequence("preprocess", SET_TO, "counts"),
         Consequence("logged", SET_TO, "no"),
         Consequence("format", SET_TO, "tdf"),
