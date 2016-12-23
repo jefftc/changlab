@@ -515,16 +515,24 @@ def read_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
     else:
         # Use the Python csv parser.
         # Allow up to 32Mb fields (Python 2.5 and above).
+        FIELD_SIZE_LIMIT = 32*1024*1024
         if hasattr(csv, "field_size_limit"):
-            csv.field_size_limit(32*1024*1024)
+            csv.field_size_limit(FIELD_SIZE_LIMIT)
         # Read each line.
         handle = csv.reader(handle, delimiter=delimiter)
-        for i, row in enumerate(handle):
-            if nrows is not None and i >= nrows:
-                break
-            #if i > 5000:   # For debugging
-            #    break
-            yield row
+        row = None
+        try:
+            for i, row in enumerate(handle):
+                if nrows is not None and i >= nrows:
+                    break
+                #if i > 5000:   # For debugging
+                #    break
+                yield row
+        except csv.Error, x:
+            if str(x).find("field larger than field limit"):
+                if row is not None:
+                    print "row %d limit %d" % (i, FIELD_SIZE_LIMIT)
+            raise
 
 
 def read_all_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):

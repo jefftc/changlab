@@ -297,8 +297,3 @@ def make_heatmap_command(in_file, heatmap_file, row_tree_file, col_tree_file):
         ]
     cmd = " ".join(map(str, cmd))
     return cmd
-    
-
-    
-    
-    

@@ -18,9 +18,9 @@ class Module(AbstractModule):
 
         M = arrayio.read(in_data.identifier)
         cat2header = apl.categorize_headers(M)
-        header = cat2header.get(apl.GENE_ID)
+        header = cat2header.get(apl.GENE_SYMBOL)
         if header is None:
-            header = cat2header.get(apl.GENE_SYMBOL)
+            header = cat2header.get(apl.GENE_ID)
         assert header is not None, "I could not find gene IDs or symbols: %s" \
                % in_data.identifier
         metadata["dedup_header"] = header

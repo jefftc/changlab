@@ -41,6 +41,10 @@ all_modules=[
         "annotate_genes_with_gsea",
         [SignalFile.SignalFile, SignalFile.ClassLabelFile],
         GSEAResults,
+
+        OptionDef(
+            "gsea_fdr_cutoff", default="0.25",
+            help="Use this FDR cutoff to determine significant gene sets."),
         Constraint("contents", CAN_BE_ANY_OF, BDT.CONTENTS,0),
         Constraint("contents", SAME_AS, 0, 1),
         Consequence("contents", SAME_AS_CONSTRAINT, 0),

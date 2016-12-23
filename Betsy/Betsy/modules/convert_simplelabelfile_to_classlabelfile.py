@@ -56,6 +56,13 @@ class Module(AbstractModule):
             assert x in sample2class, "Missing sample: %s" % x
         classes = [sample2class[x] for x in samples]
 
+        if True:
+            # Actually, sort the classes to match the samples.
+            class_names = []
+            for x in classes:
+                if x not in class_names:
+                    class_names.append(x)
+
         arraysetlib.write_multi_cls_file(outfile, class_names, classes)
 
 
