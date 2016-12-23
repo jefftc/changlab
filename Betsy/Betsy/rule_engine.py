@@ -240,6 +240,7 @@ def run_pipeline(
             # Execute the modules in alphabetical order.  So push them
             # onto the stack in reverse alphabetical order.
             schwartz = [(bie3.get_node_name(x[0]), x) for x in add_to_stack]
+            schwartz = list(schwartz)  # to shut up pychecker (no attrib sort)
             schwartz.sort()
             schwartz.reverse()
             add_to_stack = [x[-1] for x in schwartz]
@@ -254,7 +255,7 @@ def run_pipeline(
             if not all_antecedent_ids:
                 # No sets of inputs are ready to run.  Put back to the
                 # bottom of the stack and try again later.
-                stack.insert(0, (node, node_id, more_info, transitions))
+                stack.insert(0, (node, node_id, None, transitions))
                 if DEBUG_RUN_PIPELINE:
                     print "Not ready to run yet.  Will try again later."
                     for x in not_available:
@@ -266,21 +267,29 @@ def run_pipeline(
             else:
                 for antecedent_ids in all_antecedent_ids:
                     assert len(node.in_datatypes) == len(antecedent_ids)
-                    x = node, node_id, antecedent_ids, transitions
-                    stack.append(x)
-                    if DEBUG_RUN_PIPELINE:
-                        print "Ready to run.  Adding with antecedent IDs."
+                    for x in find_out_nodes(
+                        network, path_ids, antecedent_ids, node_id, pool):
+                        out_id, out_data_node = x
+                        more_info = antecedent_ids, out_id, out_data_node
+                        x = node, node_id, more_info, transitions
+                        stack.append(x)
+                        if DEBUG_RUN_PIPELINE:
+                            print (
+                                "%s ready to run.  "
+                                "Adding with antecedent IDs %s and "
+                                "out_id %s." % (
+                                    node_id, antecedent_ids, out_id))
         elif isinstance(node, bie3.ModuleNode):
             # Run this module.
-            antecedent_ids = more_info
+            antecedent_ids, out_id, out_data_node = more_info
             assert len(node.in_datatypes) == len(antecedent_ids)
             if DEBUG_RUN_PIPELINE:
-                print "Running."
+                print "Running %s." % node_id
 
             x = run_module(
-                network, path_ids, node_id, antecedent_ids, user_options,
-                pool, transitions, user, job_name, clean_up=clean_up,
-                num_cores=num_cores, verbosity=verbosity)
+                network, antecedent_ids, node_id, out_data_node,
+                user_options, pool, transitions, user, job_name,
+                clean_up=clean_up, num_cores=num_cores, verbosity=verbosity)
             if x is None:
                 # Can happen if this module has already been run.  It
                 # might've gotten added to the stack because there are
@@ -291,8 +300,7 @@ def run_pipeline(
             if DEBUG_RUN_PIPELINE:
                 print "Successfully complete."
             # Successfully completed this module.
-            out_path, next_node, next_id, run_time = x
-            assert next_id is not None
+            out_path, next_node, run_time = x
             # HACK: Add the out_path to the next_node object so that
             # we can generate read receipts.
             next_node.out_path = out_path
@@ -301,18 +309,18 @@ def run_pipeline(
             # Many paths might have led to this module.  Should merge
             # the transitions from each of the antecedents.
             #trans = transitions.copy()
-            trans = transition_cache.get(next_id, {})
+            trans = transition_cache.get(out_id, {})
             for nid in antecedent_ids:
                 x = transition_cache.get(nid, {})
                 trans.update(x)
             for x in antecedent_ids:
                 trans[(x, node_id)] = 1
-            trans[(node_id, next_id)] = 1
-            transition_cache[next_id] = trans
-            stack.append((next_node, next_id, None, trans))
+            trans[(node_id, out_id)] = 1
+            transition_cache[out_id] = trans
+            stack.append((next_node, out_id, None, trans))
             if DEBUG_RUN_PIPELINE:
                 print "Adding to stack: %s [%d]." % (
-                    bie3.get_node_name(next_node), next_id)
+                    bie3.get_node_name(next_node), out_id)
             total_time += run_time
             # Since new nodes are added to the stack, more modules may
             # be ready now.
@@ -341,64 +349,39 @@ def run_pipeline(
     #return None
 
 
-def run_module(
-    network, path_ids, module_id, input_ids, all_user_options, pool,
-    transitions, user, job_name='', clean_up=True, num_cores=8, verbosity=0):
-    # Return tuple of (output_path, IdentifiedDataNode, node_id,
-    # elapsed time) for the node that was created.  Returns None if
-    # this module fails (no compatible output nodes, or all output
-    # nodes already generated).
+def _import_module(network, module_id):
+    import importlib
+    
+    module_node = network.nodes[module_id]
+    # If module is missing, should raise ImportError with decent error
+    # message.
+    #x = __import__(
+    #    'modules.'+module_name, globals(), locals(), [module_name], -1)
+    x = importlib.import_module("Betsy.modules.%s" % module_node.name)
+    module = x.Module()
+    return module_node, module
 
-    import os
-    import sys
-    import time
-    import logging
 
-    from genomicode import filelib
-    from Betsy import config
+def find_out_nodes(network, path_ids, input_ids, module_id, pool):
+    # Return list of (node_id, node) that can be outputs of this
+    # module.
     from Betsy import bie3
-
-    assert user
-    output_path = config.CACHE_PATH
-    filelib.assert_exists(output_path)
 
     # If there are no possible nodes to generate, return an empty list.
     assert network.transitions[module_id]
     x = network.transitions[module_id]
     x = [x for x in x if x not in pool]
     if not x:
-        return None
-
-    # Import module.
-    module_node = network.nodes[module_id]
-    module_name = module_node.name
-    assert len(module_node.in_datatypes) == len(input_ids)
-    
-    # If module is missing, will raise ImportError with decent error
-    # message.
-    # TODO: Use importlib here.
-    x = __import__(
-        'modules.'+module_name, globals(), locals(), [module_name], -1)
-    module = x.Module()
+        return []
 
     # Get the antecedents from the pool.
-    in_identified_data_nodes = [pool[x] for x in input_ids]
-    # Same as in_identified_data_nodes, but lists of length 1 are
-    # turned into single objects.
-    antecedents = in_identified_data_nodes
+    antecedents = [pool[x] for x in input_ids]
     if len(antecedents) == 1:
         antecedents = antecedents[0]
 
-    # Get the user_options.  all_user_options contains all options
-    # provided by the user.  Pull out the ones relevant for this
-    # module.  Use the defaults when necessary.
-    user_options = {}
-    for option in module_node.option_defs:
-        value = all_user_options.get(option.name)
-        if value is None:
-            value = option.default
-        assert value is not None, "Missing input: %s" % option.name
-        user_options[option.name] = value
+    # Import module.
+    module_node, module = _import_module(network, module_id)
+    assert len(module_node.in_datatypes) == len(input_ids)
 
     # ModuleNodes can point to multiple DataNodes.  They should always
     # be the same type, but their attributes may be different (e.g. is
@@ -407,10 +390,20 @@ def run_module(
 
     # Create a list of all the output nodes that can be generated by
     # this set of inputs.
-    x = [x.data for x in in_identified_data_nodes]
+    if isinstance(antecedents, bie3.IdentifiedDataNode):
+        x = [antecedents.data]
+    else:
+        x = [x.data for x in antecedents]
     out_data_nodes = bie3._fc_to_outputs(module_node, x)
     # Make sure the DataTypes are the same.
     assert out_data_nodes
+    # Can have multiple out_data_nodes:
+    # 1.  If attribute is BASED_ON_DATA e.g.
+    #     is_indexed=yes,no         OR
+    #     compressed=no,gz,bz2,xz
+    # 2.  Module should be run twice, e.g.
+    #     extract_rsem_signal -> genes
+    #     extract_rsem_signal -> isoforms
     x = sorted([x.datatype for x in out_data_nodes])
     assert x[0] == x[-1], "ModuleNode points to different DataTypes."
 
@@ -425,7 +418,6 @@ def run_module(
         out_data_node = out_data_nodes[i]
         attr = module.set_out_attributes(antecedents, out_data_node.attributes)
         out_data_node.attributes = attr
-    
         # This might generate duplicate out_data_nodes.  Get rid of them.
         j = i+1
         while j < len(out_data_nodes):
@@ -446,7 +438,7 @@ def run_module(
         i += 1
 
     # Figure out which node in the network is compatible with out_node.
-    compatible = []  # list of (out_data_node, next_ids)
+    compatible = []  # list of (next_id, out_data_node)
     for next_id in network.transitions[module_id]:
         # If this ID has already been run, then ignore.
         if next_id in pool:
@@ -459,14 +451,57 @@ def run_module(
             # out_attributes should be subset of next_data.attributes.
             if not bie3._is_data_compatible(out_data_node, next_node):
                 continue
-            compatible.append((out_data_node, next_id))
-    # If there are no compatible out nodes, then return None.
-    if not compatible:
-        return None
-    # If there are multiple compatible nodes, arbitrarily use the first one.
-    assert len(compatible) >= 1
-    out_data_node, next_id = compatible[0]
+            compatible.append((next_id, out_data_node))
+    # There may be multiple compatible nodes, e.g.
+    #     RSEMResults -> extract_rsem_signal -> genes
+    #                                        -> isoforms
+    # Both of them should be run.
+    return compatible
     
+
+def run_module(
+    network, input_ids, module_id, out_data_node, all_user_options,
+    pool, transitions, user, job_name='', clean_up=True, num_cores=8,
+    verbosity=0):
+    # Return tuple of (output_path, IdentifiedDataNode, node_id,
+    # elapsed time) for the node that was created.  Returns None if
+    # this module fails (no compatible output nodes, or all output
+    # nodes already generated).
+
+    import os
+    import sys
+    import time
+    import logging
+
+    from genomicode import filelib
+    from Betsy import config
+    from Betsy import bie3
+
+    assert user
+    output_path = config.CACHE_PATH
+    filelib.assert_exists(output_path)
+
+    # Import module.
+    module_node, module = _import_module(network, module_id)
+    assert len(module_node.in_datatypes) == len(input_ids)
+    module_name = module_node.name
+
+    # Get the antecedents from the pool.
+    antecedents = [pool[x] for x in input_ids]
+    if len(antecedents) == 1:
+        antecedents = antecedents[0]
+
+    # Get the user_options for this module.  all_user_options contains
+    # all options provided by the user.  Pull out the ones relevant
+    # for this module.  Use the defaults when necessary.
+    user_options = {}
+    for option in module_node.option_defs:
+        value = all_user_options.get(option.name)
+        if value is None:
+            value = option.default
+        assert value is not None, "Missing input: %s" % option.name
+        user_options[option.name] = value
+
     # Set up the directories and outfile.
     # Unfortunately, can't use timestamp in pathname, or else this
     # will never re-use prior analyses.  Have to be more clever about
@@ -515,7 +550,7 @@ def run_module(
             x = os.path.split(result_dir)[1]
             print "%s%s" % (" "*indent, x)
         sys.stdout.flush()
-        return result_dir, out_identified_data_node, next_id, elapsed
+        return result_dir, out_identified_data_node, elapsed
 
     #_debug_is_module_output_complete(
     #    module_name, antecedents, out_data_node.attributes, user_options,
@@ -636,7 +671,7 @@ def run_module(
         assert os.path.exists(filename)
         params = _read_parameter_file(filename)
         elapsed = params["elapsed"]
-        return result_dir, out_identified_data_node, next_id, elapsed
+        return result_dir, out_identified_data_node, elapsed
 
     # Make sure nobody deleted this after I created it.
     assert os.path.exists(result_dir)
@@ -698,7 +733,7 @@ def run_module(
             _rmtree_multi(result_dir)
         os.chdir(cwd)
 
-    return result_dir, out_identified_data_node, next_id, elapsed
+    return result_dir, out_identified_data_node, elapsed
 
 
 class FileRefresher:
