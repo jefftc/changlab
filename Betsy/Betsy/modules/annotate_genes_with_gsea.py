@@ -33,7 +33,6 @@ class Module(AbstractModule):
         return "gsea"
 
 
-    
 def calc_gsea(
     expression_file, class_label_file, user_options, num_cores, out_path,
     permutation_type, database):
@@ -43,6 +42,8 @@ def calc_gsea(
     from genomicode import arraysetlib
     from genomicode import hashlib
     from genomicode import filelib
+    from genomicode import genesetlib
+    from Betsy import module_utils as mlib
 
     names, classes = arraysetlib.read_cls_file(class_label_file)
     assert names
@@ -58,6 +59,10 @@ def calc_gsea(
     # Make sure classes go from [0, len(names))
     for i in classes:
         assert i >= 0 and i < len(names)
+
+    fdr_cutoff = mlib.get_user_option(
+        user_options, "gsea_fdr_cutoff", not_empty=True, type=float)
+    assert fdr_cutoff > 0 and fdr_cutoff <= 1
 
     # Find all combinations of names and classes.
     opj = os.path.join
@@ -94,6 +99,40 @@ def calc_gsea(
         commands.append(cmd)
     for cmd in commands:
         parallel.sshell(cmd)
+
+    # Summarize results.
+    # Make a geneset file.
+    significant = []
+    for j in jobs:
+        x = find_significant_gene_sets(j.gsea_path, j.N1, j.N2, fdr_cutoff)
+        significant.append(x)
+    
+    genesets = []
+    for j, x in zip(jobs, significant):
+        genes1, genes2 = x
+        gs_name1 = "%s_%s" % (j.stem, j.N1)
+        gs_name2 = "%s_%s" % (j.stem, j.N2)
+        gs1 = genesetlib.GeneSet(gs_name1, "", genes1)
+        gs2 = genesetlib.GeneSet(gs_name2, "", genes2)
+        genesets.extend([gs1, gs2])
+    x = "genesets.fdr_%g.gmt" % fdr_cutoff
+    geneset_file = opj(out_path, x)
+    genesetlib.write_gmt(geneset_file, genesets)
+
+    # Count the number of significant gene sets.
+    x = "num_genesets.fdr_%g.txt" % fdr_cutoff
+    summary_file = opj(out_path, x)
+    handle = open(summary_file, 'w')
+    header = "Group 1", "Group 2", "Gene Sets in Group 1", \
+             "Gene Sets in Group 2"
+    print >>handle, "\t".join(header)
+    for j, x in zip(jobs, significant):
+        genes1, genes2 = x
+        x = j.N1, j.N2, len(genes1), len(genes2)
+        assert len(x) == len(header)
+        print >>handle, "\t".join(map(str, x))
+    handle.close()
+    
     return commands, sorted(permutation_types)
     
 
@@ -134,3 +173,41 @@ def make_gsea_command(
         ]
     cmd = " ".join(map(str, cmd))
     return cmd
+
+
+def find_significant_gene_sets(gsea_path, name1, name2, fdr_cutoff):
+    # Return a tuple of:
+    # 1.  list of gene sets associated with name1
+    # 2.  list of gene sets associated with name2
+    import os
+    from genomicode import filelib
+
+    assert fdr_cutoff > 0 and fdr_cutoff <= 1.0
+
+    # gsea_report_for_NET1KO_IMM_1482443241364.xls
+    # gsea_report_for_NET1KO_P2_1482443241364.xls
+    # gsea_report_for_<name1>_<some number>.xls
+    x = os.listdir(gsea_path)
+    x = [x for x in x if x.startswith("gsea_report_for_")]
+    x = [x for x in x if x.endswith(".xls")]
+    assert x, "Could not find gsea_report"
+    assert len(x) == 2, "Could not find 2 gsea_reports"
+    report1, report2 = x
+
+    # What if name1 is substring of name2?
+    if report1.find(name2) >= 0 and report2.find(name1) >= 0:
+        report1, report2 = report2, report1
+    assert name1 in report1 and name2 in report2
+
+    filename1 = os.path.join(gsea_path, report1)
+    filename2 = os.path.join(gsea_path, report2)
+
+    # Will try to read as an excel file.  Return blank result.
+    ds1 = [d for d in filelib.read_row(open(filename1), header=1)]
+    ds2 = [d for d in filelib.read_row(open(filename2), header=1)]
+    ds1 = [d for d in ds1 if float(d.FDR_q_val) < fdr_cutoff]
+    ds2 = [d for d in ds2 if float(d.FDR_q_val) < fdr_cutoff]
+
+    gs1 = [d.NAME for d in ds1]
+    gs2 = [d.NAME for d in ds2]
+    return gs1, gs2
