@@ -21,6 +21,9 @@ class Module(AbstractModule):
 
         adapters_filename = mlib.get_user_option(
             user_options, "adapters_fasta", not_empty=True, check_file=True)
+        if " " in adapters_filename:
+            os.symlink(adapters_filename, "adapters.txt")
+            adapters_filename = "adapters.txt"
         
         jobs = []
         for x in fastq_files:
@@ -116,10 +119,11 @@ def _make_trimmomatic_cmd(
         cmd += [pair1, trimmed1]
     else:
         cmd += [
-            pair1, pair2,
-            trimmed1, unpaired1,
-            trimmed2, unpaired2,
+            sq(pair1), sq(pair2),
+            sq(trimmed1), sq(unpaired1),
+            sq(trimmed2), sq(unpaired2),
             ]
+    assert " " not in adapters_filename
     cmd += [
         # What if there are spaces in adapters_filename?
         "ILLUMINACLIP:%s:2:30:10" % adapters_filename,

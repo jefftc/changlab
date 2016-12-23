@@ -55,7 +55,7 @@ class Module(AbstractModule):
                 sq(samtools),
                 "sort",
                 "-O", "bam",
-                "-T", temp_prefix,
+                "-T", sq(temp_prefix),
                 "-m", "4G",    # Crashing, so try increasing memory.
                 sq(in_filename),
                 "-o", sq(out_filename),

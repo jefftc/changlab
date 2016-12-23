@@ -8,6 +8,8 @@ Methods:
 create_reference_genome
 standardize_reference_genome
 
+find_bai_file
+
 get_samtools_version
 get_bcfutils_version
 get_vcfutils_version
@@ -299,6 +301,29 @@ def standardize_reference_genome(
     x = create_reference_genome(out_path)
     return x
 
+
+def find_bai_file(bam_filename):
+    # Given a bam file, find the bai index file.  Return None if not
+    # found.
+    import os
+    from genomicode import filelib
+    
+    filelib.assert_exists_nz(bam_filename)
+    path, filename = os.path.split(bam_filename)
+    stem, ext = os.path.splitext(filename)
+    assert ext.lower() == ".bam"
+
+    # <stem>.bam
+    # <stem>.bam.bai
+    # <stem>.bai
+    file1 = os.path.join(path, "%s.bam.bai" % stem)
+    file2 = os.path.join(path, "%s.bai" % stem)
+    if filelib.exists(file1):
+        return file1
+    elif filelib.exists(file2):
+        return file2
+    return None
+    
 
 def get_radia_version():
     import os
@@ -1093,7 +1118,7 @@ def make_STAR_command(
     x = [
         sq(STAR),
         "--genomeDir", sq(reference_path),
-        "--outFileNamePrefix", out_prefix,
+        "--outFileNamePrefix", sq(out_prefix),
         "--runThreadN", num_cores,
         "--outSAMtype", "BAM Unsorted",
         ]
@@ -1103,7 +1128,7 @@ def make_STAR_command(
     if pair2:
         x += [sq(pair2)]
     x = " ".join(map(str, x))
-    x = "%s >& %s" % (x, log_filename)
+    x = "%s >& %s" % (x, sq(log_filename))
     return x
 
 
@@ -1158,7 +1183,7 @@ def make_STAR_index_command(
         x += ["--sjdbGTFfile", sq(gtf_file)]
     else:
         assert sjdb_files
-        x += ["--sjdbFileChrStartEnd"] + sjdb_files
+        x += ["--sjdbFileChrStartEnd"] + [sq(x) for x in sjdb_files]
     x = " ".join(map(str, x))
     #x = "%s >& out.txt" % " ".join(map(str, x))
     return x

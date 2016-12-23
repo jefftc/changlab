@@ -102,6 +102,7 @@ def pyfun(jobs, num_procs=4, lock_keyword=None, DELAY=0.1,
     # to the function with this name.
     # DELAY is the number of seconds to wait before polling for
     # completed processes.
+    # Return a list of the return values for each job.
     import sys
     import time
     import multiprocessing

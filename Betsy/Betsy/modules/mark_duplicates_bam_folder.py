@@ -56,7 +56,8 @@ class Module(AbstractModule):
                 "METRICS_FILE=metricsFile",
                 #"CREATE_INDEX=true",
                 "VALIDATION_STRINGENCY=LENIENT",
-                "REMOVE_DUPLICATES=true",
+                #"REMOVE_DUPLICATES=true",
+                "REMOVE_DUPLICATES=false",
                 # BAM files should be sorted.
                 # Actuallly, DEPRECATED now.
                 #"ASSUME_SORTED=true",
