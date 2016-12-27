@@ -11,6 +11,7 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import alignlib
         from genomicode import parallel
+        from genomicode import hashlib
         from Betsy import module_utils as mlib
         
         fastq_node, sample_node, strand_node, reference_node = antecedents
@@ -29,18 +30,58 @@ class Module(AbstractModule):
         assert x in ["genome", "transcriptome"]
         align_to_genome = (x == "genome")
 
+        # RSEM makes files:
+        # <sample_name>.genome.bam
+        # <sample_name>.transcript.bam
+        # <sample_name>.genes.results
+        # <sample_name>.isoforms.results
+        # <sample_name>.stat
+        # 
+        # Does not work right if there is a space in the sample name.
+        # Therefore, give a hashed sample name, and then re-name
+        # later.
+
         # Make a list of the jobs to run.
-        jobs = []  # list of sample, pair1, pair2, log_filename
+        jobs = []
         for x in fastq_files:
             sample, pair1, pair2 = x
+            sample_h = hashlib.hash_var(sample)
+
+            x1, x2, x3 = mlib.splitpath(pair1)
+            x = "%s%s" % (hashlib.hash_var(x2), x3)
+            pair1_h = os.path.join(out_path, x)
+            if pair2:
+                x1, x2, x3 = mlib.splitpath(pair2)
+                x = "%s%s" % (hashlib.hash_var(x2), x3)
+                pair2_h = os.path.join(out_path, x)
             results_filename = os.path.join(
                 out_path, "%s.genes.results" % sample)
             log_filename = os.path.join(out_path, "%s.log" % sample)
             x = filelib.GenericObject(
-                sample=sample, pair1=pair1, pair2=pair2,
+                sample=sample, sample_h=sample_h,
+                pair1=pair1, pair2=pair2,
+                pair1_h=pair1_h, pair2_h=pair2_h,
                 results_filename=results_filename, 
                 log_filename=log_filename)
             jobs.append(x)
+
+        # Make sure hashed samples are unique.
+        seen = {}
+        for j in jobs:
+            assert j.sample_h not in seen, \
+                   "Dup (%d): %s" % (len(jobs), j.sample_h)
+            assert j.pair1_h not in seen
+            assert j.pair2_h not in seen
+            seen[j.sample_h] = 1
+            seen[j.pair1_h] = 1
+            seen[j.pair2_h] = 1
+
+        # Symlink the fastq files.
+        for j in jobs:
+            os.symlink(j.pair1, j.pair1_h)
+            if j.pair2:
+                os.symlink(j.pair2, j.pair2_h)
+            
 
         s2fprob = {
             "unstranded" : None,
@@ -71,7 +112,8 @@ class Module(AbstractModule):
         commands = []
         for j in jobs:
             # Debug: If the results file exists, don't run it again.
-            if filelib.exists_nz(j.results_filename):
+            if filelib.exists_nz(j.results_filename) and \
+                   filelib.exists(j.log_filename):
                 continue
             # If using the STAR aligner, then most memory efficient
             # way is to let STAR take care of the multiprocessing.
@@ -85,7 +127,8 @@ class Module(AbstractModule):
             else:
                 keywds["align_with_bowtie2"] = True
             x = alignlib.make_rsem_command(
-                ref.fasta_file_full, j.sample, j.pair1, fastq_file2=j.pair2,
+                ref.fasta_file_full, j.sample_h,
+                j.pair1_h, fastq_file2=j.pair2_h,
                 forward_prob=forward_prob, output_genome_bam=align_to_genome,
                 bowtie_chunkmbs=chunkmbs, num_threads=nc, **keywds)
             x = "%s >& %s" % (x, sq(j.log_filename))
@@ -98,11 +141,33 @@ class Module(AbstractModule):
             nc = 1
         parallel.pshell(commands, max_procs=nc, path=out_path)
 
+        # Rename the hashed sample names back to the original unhashed
+        # ones.
+        files = os.listdir(out_path)
+        rename_files = []  # list of (src, dst)
+        for j in jobs:
+            if j.sample == j.sample_h:
+                continue
+            for f in files:
+                if not f.startswith(j.sample_h):
+                    continue
+                src = os.path.join(out_path, f)
+                x = j.sample + f[len(j.sample_h):]
+                dst = os.path.join(out_path, x)
+                rename_files.append((src, dst))
+        for src, dst in rename_files:
+            filelib.assert_exists(src)
+            os.rename(src, dst)
+
+        # Delete the symlinked fastq files.
+        for j in jobs:
+            filelib.safe_unlink(j.pair1_h)
+            filelib.safe_unlink(j.pair2_h)
+
         # Make sure the analysis completed successfully.
-        x1 = [x.log_filename for x in jobs]
-        x2 = [x.results_filename for x in jobs]
-        x = x1 + x2
-        filelib.assert_exists_nz_many(x)
+        x1 = [x.results_filename for x in jobs]
+        x2 = [x.log_filename for x in jobs]
+        filelib.assert_exists_nz_many(x1+x2)
         
         return metadata
 

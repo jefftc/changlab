@@ -514,7 +514,9 @@ def read_cols(file_or_handle, delimiter="\t", skip=0, nrows=None):
         handle.close()
     else:
         # Use the Python csv parser.
-        # Allow up to 32Mb fields (Python 2.5 and above).
+        # Allow up to 64Mb fields (Python 2.5 and above).
+        # Have problems reading bam files with smaller limit:
+        # field larger than field limit (33554432)
         FIELD_SIZE_LIMIT = 32*1024*1024
         if hasattr(csv, "field_size_limit"):
             csv.field_size_limit(FIELD_SIZE_LIMIT)

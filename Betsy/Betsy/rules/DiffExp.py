@@ -140,8 +140,7 @@ all_modules = [
         Consequence(
             "de_algorithm", SET_TO_ONE_OF,
             ["fold_change", "ttest", "sam", "ebayes"]),
-        help="Calculate differential expression of genes from "
-        "microarray data."
+        help="Calculate differential expression of genes."
         ),
 
     ModuleNode(
@@ -166,8 +165,7 @@ all_modules = [
         Consequence("preprocess", SAME_AS_CONSTRAINT, 0),
         Constraint("logged", MUST_BE, "no", 0),
         Constraint("format", MUST_BE, "tdf", 0),
-        Consequence(
-            "de_algorithm", SET_TO_ONE_OF, ["deseq2", "edger"]),
+        Consequence("de_algorithm", SET_TO_ONE_OF, ["deseq2", "edger"]),
         help="Calculate differential expression of genes from "
         "read counts (RNA-Seq data)."
         ),

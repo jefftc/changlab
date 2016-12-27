@@ -454,7 +454,7 @@ all_modules = [
          RNASeqUnprocessedSignalFile,        # 6    gene expression
          RNASeqUnprocessedSignalFile,        # 7    isoform expression
          NGS.NumAlignedReads,                # 8
-         RNASeqUnprocessedSignalFile,        # 9
+         RNASeqUnprocessedSignalFile,        # 9    counts
          HTSeqCountSummary,                  # 10
          ],
         CompleteRNASeqAnalysis,
@@ -469,13 +469,13 @@ all_modules = [
         # RSeQCResults
         Constraint("aligner", SAME_AS, 0, 5),
         Constraint("adapters_trimmed", SAME_AS, 0, 5),
-        # RNASeqUnprocessedSignalFile
+        # SignalFile, genes
         Constraint("aligner", SAME_AS, 0, 6),
         Constraint("adapters_trimmed", SAME_AS, 0, 6),
         Constraint("logged", MUST_BE, "no", 6),
         Constraint("preprocess", MUST_BE, "tpm", 6),
         Constraint("expression_of", MUST_BE, "gene", 6),
-        # RNASeqUnprocessedSignalFile
+        # SignalFile, isoforms
         Constraint("aligner", SAME_AS, 0, 7),
         Constraint("adapters_trimmed", SAME_AS, 0, 7),
         Constraint("logged", MUST_BE, "no", 7),
@@ -484,7 +484,7 @@ all_modules = [
         # NumAlignedReads
         Constraint("aligner", SAME_AS, 0, 8),
         Constraint("adapters_trimmed", SAME_AS, 0, 8),
-        # RNASeqUnprocessedSignalFile
+        # SignalFile, counts
         Constraint("aligner", SAME_AS, 0, 9),
         Constraint("adapters_trimmed", SAME_AS, 0, 9),
         Constraint("logged", MUST_BE, "no", 9),

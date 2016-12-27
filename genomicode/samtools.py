@@ -34,9 +34,16 @@ class SAMAlignment:
 def parse_sam(file_or_handle):
     # yield SAMAlignment objects
     from genomicode import filelib
-    
-    for cols in filelib.read_cols(file_or_handle):
-        assert len(cols) >= 11
+
+
+    # Somehow, csv raises errors on some BAM files read directly with
+    # "samtools view" (via the subprocess module).  Just implement our
+    # own column splitting.
+    #for cols in filelib.read_cols(file_or_handle):
+    handle = filelib.openfh(file_or_handle)
+    for line in handle:
+        cols = line.rstrip("\r\n").split("\t")
+        assert len(cols) >= 11, "Invalid line (%d):\n%s" % (len(cols), line)
         qname = cols[0]
         flag = int(cols[1])
         rname = cols[2]

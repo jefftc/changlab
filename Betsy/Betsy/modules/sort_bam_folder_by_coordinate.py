@@ -12,6 +12,7 @@ class Module(AbstractModule):
         from genomicode import filelib
         from genomicode import parallel
         from genomicode import alignlib
+        #from genomicode import hashlib
         from Betsy import module_utils
         
         in_filenames = module_utils.find_bam_files(in_data.identifier)
@@ -20,15 +21,25 @@ class Module(AbstractModule):
 
         metadata = {}
         metadata["tool"] = "samtools %s" % alignlib.get_samtools_version()
-        
-        jobs = []  # list of (in_filename, temp_prefix, out_filename)
-        for in_filename in in_filenames:
+
+        jobs = []
+        #seen = {}
+        for i, in_filename in enumerate(in_filenames):
             p, f = os.path.split(in_filename)
-            out_filename = os.path.join(out_path, f)
             temp_prefix = "temp_%s" % f
-            x = in_filename, temp_prefix, out_filename
+            #temp_prefix = "temp_%s" % hashlib.hash_var(f)
+            # Make sure no duplicates.
+            #assert temp_prefix not in seen
+            #seen[temp_prefix] = 1
+            #temp_outfilename = "%d.bam" % i
+            out_filename = os.path.join(out_path, f)
+            x = filelib.GenericObject(
+                in_filename=in_filename,
+                temp_prefix=temp_prefix,
+                #temp_outfilename=temp_outfilename,
+                out_filename=out_filename)
             jobs.append(x)
-        
+            
         samtools = filelib.which_assert(config.samtools)
 
         # Calculate the number of threads per process.
@@ -39,9 +50,7 @@ class Module(AbstractModule):
         # Without -m, takes ~1 Gb per process.
         sq = parallel.quote
         commands = []
-        for x in jobs:
-            in_filename, temp_prefix, out_filename = x
-
+        for j in jobs:
             # Usage has changed.  Below no longer valid.
             # samtools sort <in_filename> <out_filestem>
             # .bam automatically added to <out_filestem>, so don't
@@ -55,10 +64,11 @@ class Module(AbstractModule):
                 sq(samtools),
                 "sort",
                 "-O", "bam",
-                "-T", sq(temp_prefix),
+                "-T", sq(j.temp_prefix),
                 "-m", "4G",    # Crashing, so try increasing memory.
-                sq(in_filename),
-                "-o", sq(out_filename),
+                sq(j.in_filename),
+                #"-o", sq(j.temp_outfilename),
+                "-o", sq(j.out_filename),
                 ]
             if num_threads > 1:
                 x += ["-@", num_threads]
@@ -71,9 +81,13 @@ class Module(AbstractModule):
         #for cmd in commands:
         #    parallel.sshell(cmd)
 
+        #for j in jobs:
+        #    # Move the temporary files to the final location.
+        #    shutil.move(j.temp_outfilename, j.out_filename)
+
         # Make sure the analysis completed successfully.
-        out_filenames = [x[-1] for x in jobs]
-        filelib.assert_exists_nz_many(out_filenames)
+        x = [j.out_filename for j in jobs]
+        filelib.assert_exists_nz_many(x)
         
         return metadata
 

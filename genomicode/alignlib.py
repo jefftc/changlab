@@ -1039,6 +1039,13 @@ def find_rsem_result_files(search_path):
     # Find the files with rsem gene expression estimates.  Return list
     # of (sample, gene_filename, isoform_filename).  gene_filename or
     # isoform_filename can be None.
+
+    # RSEM makes files:
+    # <sample_name>.genome.bam
+    # <sample_name>.transcript.bam
+    # <sample_name>.genes.results
+    # <sample_name>.isoforms.results
+    # <sample_name>.stat
     import os
     from genomicode import filelib
 
@@ -1060,7 +1067,7 @@ def find_rsem_result_files(search_path):
         gene_filename, x = sample2files.get(sample, (None, None))
         assert x is None
         sample2files[sample] = gene_filename, isoform_filename
-    data = []  # list of (sample, gene_filename, isoform_filename)X
+    data = []  # list of (sample, gene_filename, isoform_filename)
     for sample in sorted(sample2files):
         gene_filename, isoform_filename = sample2files[sample]
         x = sample, gene_filename, isoform_filename
@@ -1250,8 +1257,8 @@ def make_htseq_count_command(
     if mode:
         cmd += ["-m", mode]
     cmd += [
-        bam_file,
-        gtf_file,
+        sq(bam_file),
+        sq(gtf_file),
         ]
     return " ".join(cmd)
 

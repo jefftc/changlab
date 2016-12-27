@@ -97,6 +97,8 @@ def count_reads(fastq_filename):
     from genomicode import filelib
     from genomicode import parallel
 
+    sq = parallel.quote
+
     # Make sure it's a fastq file.
     # @M03807:17:000000000-AHGYH:1:1101:20554:1508 1:N:0:16
     # CTTTACACCCAGTGGAGAAGCTCCCAACCAAGCTCTCTTGAGGATCTTGAAGGAAACTGA
@@ -110,12 +112,13 @@ def count_reads(fastq_filename):
     assert len(x[1]) == len(x[3])
     assert x[2] == "+"
     
-    x = parallel.sshell("wc -l %s" % fastq_filename)
+    wc_out = parallel.sshell("wc -l %s" % sq(fastq_filename))
     # velocitron:biocore$ wc -l test01.txt
     # 22278 test01.txt
-    x = x.strip().split()
-    assert len(x) == 2, "Unknown format from wc -l"
-    num_lines, filename = x
+    # 0 test 1.txt
+    x = wc_out.strip().split()
+    assert len(x) >= 2, "Unknown format from wc -l\n" % wc_out
+    num_lines, filename = x[0], " ".join(x[1:])
     num_lines = int(num_lines)
     num_reads = num_lines / 4
     return num_reads
