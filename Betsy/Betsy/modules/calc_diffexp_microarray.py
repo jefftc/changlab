@@ -37,6 +37,7 @@ def calc_diffexp(expression_file, class_label_file, user_options, num_cores,
     from genomicode import arraysetlib
     from genomicode import hashlib
     from genomicode import filelib
+    from genomicode import arrayplatformlib
     from Betsy import module_utils as mlib
 
     fold_change_cutoff = mlib.get_user_option(
@@ -45,6 +46,7 @@ def calc_diffexp(expression_file, class_label_file, user_options, num_cores,
         user_options, "fdr_cutoff", type=float)
     p_cutoff = mlib.get_user_option(
         user_options, "p_cutoff", type=float)
+
 
     names, classes = arraysetlib.read_cls_file(class_label_file)
     assert names
@@ -237,6 +239,10 @@ def make_calc_diffexp_genes_command(
         'python',
         sq(diffexp),
         sq(expression_file),
+        ]
+    #if genename_header:
+    #    cmd += ["--genename_header", genename_header]
+    cmd += [
         '--algorithm', algorithm,
         "--name1", name1,
         "--name2", name2,

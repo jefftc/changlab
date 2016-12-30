@@ -11,10 +11,33 @@ class Module(AbstractModule):
         from genomicode import binreg
 
         M = arrayio.read(antecedents.identifier)
-        for i in range(len(M._X)):
-            for j in range(len(M._X[i])):
-                if M._X[i][j] is not None:
-                    M._X[i][j] = 2 ** float(M._X[i][j])
+        X = M._X
+        for i in range(len(X)):
+            for j in range(len(X[i])):
+                if X[i][j] is None:
+                    continue
+                X[i][j] = 2 ** float(X[i][j])
+
+        # If all the values should be integers, convert them back to
+        # ints.
+        EPS = 1E-5
+        is_int = True
+        for i in range(len(X)):
+            for j in range(len(X[i])):
+                if X[i][j] is None:
+                    continue
+                if abs(X[i][j] - int(round(X[i][j]))) > EPS:
+                    is_int = False
+                    break
+            if not is_int:
+                break
+        if is_int:
+            for i in range(len(X)):
+                for j in range(len(X[i])):
+                    if X[i][j] is None:
+                        continue
+                    X[i][j] = int(round(X[i][j]))
+                    
         #assert binreg.is_logged_array_data(M), (
         #    'the input file %s should be logged' % antecedents.identitifer)
     

@@ -442,6 +442,13 @@ all_modules = [
             "genes_with_highest_var", default="",
             help="Keep just this number of genes with the highest variance, "
             "e.g. 250"),
+        OptionDef(
+            "only_nonempty_gene_names", default="no",
+            help="Keep only rows with given gene symbols.  Values: yes, no."),
+        OptionDef(
+            "select_row_maxvalue", default="",
+            help="Keep only rows whose maximum value is at least this value."),
+        
         Constraint("format", MUST_BE, "tdf"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Constraint("logged", MUST_BE, "yes"),

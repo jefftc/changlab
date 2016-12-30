@@ -12,6 +12,7 @@ class Module(AbstractModule):
         from genomicode import arrayplatformlib
         from genomicode import parallel
         from genomicode import filelib
+        from genomicode import AnnotationMatrix
         from Betsy import module_utils as mlib
 
         M = arrayio.read(in_data.identifier)
@@ -53,10 +54,11 @@ class Module(AbstractModule):
         cmd = [
             "python",
             sq(annotate),
-            "--header", score.header,
+            "--no_na", 
+            "--header", sq(score.header),
             ]
         for x in to_add:
-            x = ["--platform", x]
+            x = ["--platform", sq(x)]
             cmd.extend(x)
         cmd.append(in_data.identifier)
         cmd = " ".join(cmd)
@@ -76,6 +78,7 @@ class Module(AbstractModule):
         for cols in filelib.read_cols(StringIO.StringIO(data)):
             if not header_written:
                 cols = [platform2pretty.get(x, x) for x in cols]
+                cols = AnnotationMatrix.uniquify_headers(cols)
                 header_written = True
             print >>handle, "\t".join(cols)
 
