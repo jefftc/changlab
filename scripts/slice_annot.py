@@ -1661,6 +1661,15 @@ def max_annots(MATRIX, max_annots):
     maxes = jmath.max(annot_matrix, byrow=False)
     assert len(maxes) == MATRIX.num_annots()
 
+    DELTA = 1E-5
+    all_int = True
+    for x in maxes:
+        if abs(int(round(x))-x) > DELTA:
+            all_int - False
+            break
+    if all_int:
+        maxes = [int(x) for x in maxes]
+
     h = MATRIX.headers_h[dst_i]
     MATRIX.header2annots[h] = maxes
     return MATRIX

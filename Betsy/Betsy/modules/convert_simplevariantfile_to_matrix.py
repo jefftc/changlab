@@ -99,6 +99,22 @@ class Module(AbstractModule):
             if caller not in caller2coord2call:
                 caller2coord2call[caller] = {}
             coord2call = caller2coord2call[caller]
+            # A (sample, caller, coord) may have multiple calls.  For
+            # example, for germline samples that are called with each
+            # tumor sample.  If this is the case, then take the call
+            # with the highest coverage.
+            if coord in coord2call:
+                old_call = coord2call[coord]
+                cov = old_cov = None
+                if call.num_ref is not None and call.num_alt is not None:
+                    cov = call.num_ref + call.num_alt
+                if old_call.num_ref is not None and \
+                       old_call.num_alt is not None:
+                    old_cov = old_call.num_ref + old_call.num_alt
+                if cov is None and old_cov is not None:
+                    call = old_call
+                elif cov is not None and old_cov is not None and cov < old_cov:
+                    call = old_call
             coord2call[coord] = call
 
         # Count the number of callers that called a variant at each

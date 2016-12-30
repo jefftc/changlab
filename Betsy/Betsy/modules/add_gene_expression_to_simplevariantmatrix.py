@@ -31,12 +31,18 @@ class Module(AbstractModule):
         assert len(missing) < len(SVM.samples), (
             "SimpleVariantMatrix and gene expression file have "
             "no common samples.")
-        x = missing
-        if len(x) > 5:
-            x = x[:5] + ["..."]
-        msg = "Samples (%d) not found in gene expression file: %s" % (
-            len(missing), ", ".join(x))
-        assert not missing, msg
+        # Actually, may not have all the same samples.  For example, a
+        # gene expression profile might not have been calculated for
+        # the germline sample.  So ignore if something is missing.
+        #x = missing
+        #if len(x) > 5:
+        #    x = x[:5] + ["..."]
+        #msg = "Samples (%d) not found in gene expression file: %s" % (
+        #    len(missing), ", ".join(x))
+        #assert not missing, msg
+
+        # Add all the samples from the gene expression file.
+        SAMPLES = GXP_samples
 
         # Find the genes in each row.
         GENE_H = "Gene.refGene"
@@ -60,8 +66,9 @@ class Module(AbstractModule):
 
         # Make a matrix of the gene expression values for each gene
         # and each sample.
-        I = [GXP_samples.index(x) for x in SVM.samples]
-        GXP_a = GXP.matrix(genes, I)  # align the matrices.
+        #I = [GXP_samples.index(x) for x in SVM.samples]
+        #GXP_a = GXP.matrix(genes, I)  # align the matrices.
+        GXP_a = GXP.matrix(genes, None)
         
         # Write out the expression matrix for debugging purposes.
         arrayio.write(GXP_a, "expression.txt")
@@ -76,14 +83,16 @@ class Module(AbstractModule):
 
         # Align the gene expression matrix to the simple variant
         # matrix.
-        matrix = [[None]*len(SVM.samples) for i in range(len(GENES))]
+        #matrix = [[None]*len(SVM.samples) for i in range(len(GENES))]
+        matrix = [[None]*len(SAMPLES) for i in range(len(GENES))]
         for i, gene_str in enumerate(GENES):
             # Format of genes:     Format of output
             # PFN1P2                  5.2
             # PMS2P2,PMS2P7           2.2,8.6
             # If a gene is missing, then skip it.
             genes = gene_str.split(",")
-            for j in range(len(SVM.samples)):
+            #for j in range(len(SVM.samples)):
+            for j in range(len(SAMPLES)):
                 values = []  # expression values for each gene.
                 for k in range(len(genes)):
                     if genes[k] not in gene2I:
@@ -98,7 +107,8 @@ class Module(AbstractModule):
                 matrix[i][j] = x
 
         # Add the matrix back to the simple variant matrix.
-        headers = SVM.samples
+        #headers = SVM.samples
+        headers = SAMPLES
         all_annots = []
         for j in range(len(headers)):
             x = [matrix[i][j] for i in range(len(matrix))]

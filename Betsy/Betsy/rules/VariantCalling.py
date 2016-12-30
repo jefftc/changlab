@@ -1592,18 +1592,6 @@ all_modules = [
         Consequence("annotated_with_annovar", SAME_AS_CONSTRAINT),
         ),
 
-    #ModuleNode(
-    #    "convert_simplevariantmatrix_to_simplecallmatrix",
-    #    SimpleVariantMatrix, SimpleCallMatrix,
-    #    OptionDef(
-    #        "num_callers", 
-    #        help="Minimum number of callers that need to call a position."),
-    #    Constraint("filtered", MUST_BE, "yes"),
-    #    Constraint("annotated", MUST_BE, "yes"),
-    #    Constraint("vartype", CAN_BE_ANY_OF, ["snp", "indel"]),
-    #    Consequence("vartype", SAME_AS_CONSTRAINT),
-    #    ),
-
     ModuleNode(
         "make_vcf_recalibration_report_snp",
         [VCFFolder, NGS.ReferenceGenome], VCFRecalibrationReport,
