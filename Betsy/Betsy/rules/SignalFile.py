@@ -117,8 +117,12 @@ SimpleClassFile = DataType(
     # Sample   Class
     ATTR_CONTENTS,
     ATTR_PREPROCESS,
-    help="A simple tab-delimited format with labels for each sample.  "
-    "Can have two or more different classes.",
+    help='A file that assigns a "class" to each sample in an expression '
+    "file.  This should be tab-delimited file with two columns.  The first "
+    "line should contain headers:\n"
+    "Sample    Class\n"
+    "\n"
+    "There should be two or more different classes."
     )
 
 ClassLabelFile = DataType(

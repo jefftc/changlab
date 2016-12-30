@@ -14,6 +14,7 @@ class Module(AbstractModule):
 
         in_path = in_data.identifier
         filelib.safe_mkdir(out_path)
+        metadata = {}
 
         in_filenames = filelib.list_files_in_path(
             in_path, endswith=".bam", case_insensitive=True)
@@ -51,7 +52,7 @@ class Module(AbstractModule):
                 samtools,
                 "sort", "-n",
                 "-O", "bam", 
-                "-T", temp_prefix,
+                "-T", sq(temp_prefix),
                 "-o", sq(out_filename), 
                 sq(in_filename),
                 ]
@@ -59,10 +60,15 @@ class Module(AbstractModule):
             commands.append(x)
             
         parallel.pshell(commands, max_procs=num_cores)
+        metadata["commands"] = commands
+        metadata["num_cores"] = num_cores
 
         # Make sure the analysis completed successfully.
-        out_filenames = [x[-1] for x in jobs]
-        filelib.assert_exists_nz_many(out_filenames)
+        x1 = [x[-1] for x in jobs]
+        x2 = [x[-2] for x in jobs]
+        filelib.assert_exists_nz_many(x1+x2)
+
+        return metadata
 
     
     def name_outfile(self, antecedents, user_options):

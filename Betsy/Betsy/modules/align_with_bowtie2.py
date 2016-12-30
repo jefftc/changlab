@@ -11,6 +11,7 @@ class Module(AbstractModule):
         from genomicode import parallel
         from genomicode import filelib
         from genomicode import alignlib
+        from genomicode import hashlib
         from Betsy import module_utils as mlib
 
         fastq_node, sample_node, orient_node, reference_node = antecedents
@@ -24,14 +25,35 @@ class Module(AbstractModule):
         metadata = {}
         metadata["tool"] = "bowtie2 %s" % alignlib.get_bowtie2_version()
 
+        # Bowtie2 doesn't handle files with spaces in them.  Make
+        # temporary files without spaces.
+        
+
         # Make a list of the jobs to run.
         jobs = []
-        for x in fastq_files:
+        for i, x in enumerate(fastq_files):
             sample, pair1, pair2 = x
             bam_filename = os.path.join(out_path, "%s.bam" % sample)
             log_filename = os.path.join(out_path, "%s.log" % sample)
-            x = sample, pair1, pair2, bam_filename, log_filename
-            jobs.append(x)
+            sample_h = hashlib.hash_var(sample)
+            temp_pair1 = "%d_%s_1.fa" % (i, sample_h)
+            temp_pair2 = None
+            if pair2:
+                temp_pair2 = "%d_%s_2.fa" % (i, sample_h)
+            j = filelib.GenericObject(
+                sample=sample,
+                pair1=pair1,
+                pair2=pair2,
+                temp_pair1=temp_pair1,
+                temp_pair2=temp_pair2,
+                bam_filename=bam_filename,
+                log_filename=log_filename)
+            jobs.append(j)
+
+        for j in jobs:
+            os.symlink(j.pair1, j.temp_pair1)
+            if pair2:
+                os.symlink(j.pair2, j.temp_pair2)
         
         # Generate bowtie2 commands for each of the files.
         attr2orient = {
@@ -48,32 +70,33 @@ class Module(AbstractModule):
         samtools = mlib.findbin("samtools")
         sq = parallel.quote
         commands = []
-        for x in jobs:
-            sample, pair1, pair2, bam_filename, log_filename = x
+        for j in jobs:
+            #sample, pair1, pair2, bam_filename, log_filename = x
             nc = max(1, num_cores/len(jobs))
 
             # bowtie2 -p 8 -x <genome> -1 <.fq> -2 <.fq> --fr
             #  2> test.log | samtools view -bS -o test.bam -
             x1 = alignlib.make_bowtie2_command(
-                ref.fasta_file_full, pair1, fastq_file2=pair2,
+                ref.fasta_file_full, j.temp_pair1, fastq_file2=j.temp_pair2,
                 orientation=orientation, num_threads=nc)
             x2 = [
                 sq(samtools),
                 "view",
                 "-bS",
-                "-o", sq(bam_filename),
+                "-o", sq(j.bam_filename),
                 "-",
                 ]
             x2 = " ".join(x2)
-            x = "%s 2> %s | %s" % (x1, log_filename, x2)
+            x = "%s 2> %s | %s" % (x1, sq(j.log_filename), x2)
             #x = "%s >& %s" % (x, sq(log_filename))
             commands.append(x)
         metadata["commands"] = commands
         parallel.pshell(commands, max_procs=num_cores)
 
         # Make sure the analysis completed successfully.
-        x = [x[-2] for x in jobs]
-        filelib.assert_exists_nz_many(x)
+        x1 = [x.bam_filename for x in jobs]
+        x2 = [x.log_filename for x in jobs]
+        filelib.assert_exists_nz_many(x1+x2)
             
         return metadata
 

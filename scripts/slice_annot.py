@@ -397,6 +397,7 @@ def rename_header(MATRIX, rename_list):
     if not rename_list:
         return MATRIX
     from genomicode import AnnotationMatrix
+    from genomicode import parselib
 
     rename_all = []  # list of (from_str, to_str)
     for rename_str in rename_list:
@@ -408,9 +409,12 @@ def rename_header(MATRIX, rename_list):
         rename_all.append((from_str, to_str))
 
     for from_str, to_str in rename_all:
-        assert from_str in MATRIX.headers, "%s not a header" % from_str
-        assert from_str in MATRIX.header2annots, "%s not a unique header" % \
-               from_str
+        h = MATRIX.normalize_header(from_str)
+        x = parselib.pretty_list(MATRIX.headers, max_items=5)
+        assert h, "%s not a header:\n%s" % (from_str, x)
+        #assert from_str in MATRIX.headers, "%s not a header" % from_str
+        #assert from_str in MATRIX.header2annots, "%s not a unique header" % \
+        #       from_str
 
     convert = {}
     for from_str, to_str in rename_all:

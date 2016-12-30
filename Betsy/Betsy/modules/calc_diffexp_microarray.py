@@ -19,7 +19,7 @@ class Module(AbstractModule):
         
         commands = calc_diffexp(
             data_node.identifier, cls_node.identifier, user_options, num_cores,
-            out_path, algorithm)
+            out_path, algorithm, False)
         metadata["commands"] = commands
         metadata["num_cores"] = num_cores
 
@@ -30,7 +30,7 @@ class Module(AbstractModule):
 
 
 def calc_diffexp(expression_file, class_label_file, user_options, num_cores,
-                 out_path, algorithm):
+                 out_path, algorithm, log_expression):
     import os
     import arrayio
     from genomicode import parallel
@@ -89,12 +89,14 @@ def calc_diffexp(expression_file, class_label_file, user_options, num_cores,
             if cutoff_str:
                 gmt_file = "%s.%s.gmt" % (stem, cutoff_str)
                 filtered_file = "%s.%s.txt" % (stem, cutoff_str)
+            error_file = "%s.error.txt" % stem
 
             unfiltered_file = opj(out_path, unfiltered_file)
             if gmt_file:
                 gmt_file = opj(out_path, gmt_file)
             if filtered_file:
                 filtered_file = opj(out_path, filtered_file)
+            error_file = opj(out_path, error_file)
 
             # For heatmaps.
             clustered_file = "%s.%s.clustered.txt" % (stem, cutoff_str)
@@ -109,6 +111,7 @@ def calc_diffexp(expression_file, class_label_file, user_options, num_cores,
                 fold_change_cutoff=fold_change_cutoff,
                 unfiltered_file=unfiltered_file,
                 filtered_file=filtered_file, gmt_file=gmt_file,
+                error_file=error_file,
                 clustered_file=clustered_file,
                 row_tree_file=row_tree_file, col_tree_file=col_tree_file,
                 heatmap_file=heatmap_file)
@@ -118,30 +121,51 @@ def calc_diffexp(expression_file, class_label_file, user_options, num_cores,
     for j in jobs:
         cmd = make_calc_diffexp_genes_command(
             expression_file, class_label_file,
-            j.unfiltered_file, j.filtered_file, j.gmt_file,
+            j.unfiltered_file, j.filtered_file, j.gmt_file, j.error_file,
             j.N1, j.N2, j.I1, j.I2, algorithm,
             j.fdr_cutoff, j.p_cutoff, j.fold_change_cutoff)
         commands.append(cmd)
     parallel.pshell(commands, max_procs=num_cores)
 
-    # Make heatmaps for each of the filtered files.
+    # Make sure each job ran correctly.
+    for j in jobs:
+        x = open(j.error_file).read()
+        assert not filelib.exists_nz(j.error_file), "Error: %s\n%s" % (
+            j.stem, x)
+        os.unlink(j.error_file)
+    x = [j.unfiltered_file for j in jobs]
+    filelib.assert_exists_nz_many(x)
+        
+    # Make heatmaps for each of the filtered files with differentially
+    # expressed genes.
     commands1 = []
     for j in jobs:
+        if not j.filtered_file or not os.path.exists(j.filtered_file):
+            continue
+        num_de = len(open(j.filtered_file).readlines()) - 1
+        if not num_de:
+            continue
         cmd = make_cluster_command(
             j.filtered_file, j.clustered_file,
-            j.row_tree_file, j.col_tree_file)
+            j.row_tree_file, j.col_tree_file, log_expression)
         commands1.append(cmd)
     commands1 = [x for x in commands1 if x]
     parallel.pshell(commands1, max_procs=num_cores)
 
     commands2 = []
+    all_heatmap_files = []
     for j in jobs:
+        if not os.path.exists(j.clustered_file):
+            continue
         cmd = make_heatmap_command(
             j.clustered_file, j.heatmap_file,
             j.row_tree_file, j.col_tree_file)
-        commands2.append(cmd)
-    commands2 = [x for x in commands2 if x]
+        if cmd:
+            commands2.append(cmd)
+            all_heatmap_files.append(j.heatmap_file)
     parallel.pshell(commands2, max_procs=num_cores)
+
+    filelib.assert_exists_nz_many(all_heatmap_files)
 
     # Summarize the comparisons.
     if cutoff_str:
@@ -161,6 +185,7 @@ def calc_diffexp(expression_file, class_label_file, user_options, num_cores,
             "Higher in Group 1", "Higher in Group 2"]
         print >>handle, "\t".join(header)
         for j in jobs:
+            assert j.filtered_file
             filelib.assert_exists_nz(j.filtered_file)
             num_group_1 = num_group_2 = 0
             for d in filelib.read_row(j.filtered_file, header=1):
@@ -186,7 +211,7 @@ def calc_diffexp(expression_file, class_label_file, user_options, num_cores,
 
 def make_calc_diffexp_genes_command(
     expression_file, class_label_file,
-    unfiltered_file, filtered_file, gmt_file,
+    unfiltered_file, filtered_file, gmt_file, error_file,
     name1, name2, indexes1, indexes2, algorithm,
     fdr_cutoff, p_cutoff, fold_change_cutoff):
     # indexes should be 1-based, not including headers.
@@ -233,11 +258,12 @@ def make_calc_diffexp_genes_command(
         outfile = filtered_file
 
     cmd = " ".join(map(str, cmd))
-    cmd = "%s >& %s" % (cmd, outfile)
+    cmd = "%s 1> %s 2> %s" % (cmd, sq(outfile), sq(error_file))
     return cmd
 
 
-def make_cluster_command(in_file, out_file, row_tree_file, col_tree_file):
+def make_cluster_command(in_file, out_file, row_tree_file, col_tree_file,
+                         log_expression):
     import arrayio
     from genomicode import filelib
     from genomicode import parallel
@@ -256,6 +282,10 @@ def make_cluster_command(in_file, out_file, row_tree_file, col_tree_file):
     sq = parallel.quote
     cmd = [
         sq(slice_matrix),
+        ]
+    if log_expression:
+        cmd += ["--log_transform"]
+    cmd += [
         "--gc", "mean",
         "--gn", "var",
         "--reorder_col_cluster",

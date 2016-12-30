@@ -98,8 +98,18 @@ def read(locator, hrows=None, hcols=None, datatype=float, format=None):
     # Bug: this function fails if passed a file handle.
     import stat
     from genomicode import filelib
-    
-    format = format or choose_format(locator, hrows=hrows, hcols=hcols)
+
+    try:
+        format = format or choose_format(locator, hrows=hrows, hcols=hcols)
+    except AssertionError, x:
+        #if str(x).find("annotations at the end") >= 0:
+        #    if hasattr(x, "args") and x.args and type(x.args[0]) is type(""):
+        #        y = x.args[0]
+        #        x.args = ("%s\n%s" % (y, locator),)
+        import sys
+        type, value, tb = sys.exc_info()
+        x = "%s\n%s" % (str(x), locator)
+        raise AssertionError, x, tb
     if format is None:
         msg = []
         x = "I could not find a format for: %r." % locator

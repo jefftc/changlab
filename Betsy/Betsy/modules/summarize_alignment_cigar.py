@@ -58,7 +58,7 @@ def summarize_bam_file(in_filename, out_filename):
     TAGS = ["MD", "NM", "NH"]
     REQUIRED = ["MD", "NM"]
 
-    header = "query name", "chr", "pos", "CIGAR", "MD", "NM", "NH", \
+    header = "query name", "chr", "pos", "MAPQ", "CIGAR", "MD", "NM", "NH", \
              "seqlen", "perc_match"
     print >>outhandle, "\t".join(header)
     for i, align in enumerate(handle):
@@ -81,6 +81,7 @@ def summarize_bam_file(in_filename, out_filename):
             perc_match = ""
             MD = ""
             NM = ""
+            MAPQ = ""
         else:
             missing = [x for x in TAGS if x not in tag_dict]
             missing = [x for x in missing if x in REQUIRED]
@@ -97,7 +98,8 @@ def summarize_bam_file(in_filename, out_filename):
             perc_match = 1-float(edit_distance)/seqlen
             MD = tag_dict["MD"]
             NM = tag_dict["NM"]
-        x = align.query_name, ref_name, align_pos, CIGAR, MD, NM, NH, \
+            MAPQ = align.mapping_quality
+        x = align.query_name, ref_name, align_pos, MAPQ, CIGAR, MD, NM, NH, \
             seqlen, perc_match
         assert len(x) == len(header)
         print >>outhandle, "\t".join(map(str, x))
