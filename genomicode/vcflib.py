@@ -23,6 +23,7 @@ CALLERS              Global variable with all Caller classes.
 Functions:
 read
 write
+filter_vcf_file
 
 get_caller        Return the caller based on a vcf_filename
 
@@ -135,8 +136,8 @@ class VCFFile:
         vcf_headers = [
             "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER",
             "INFO", "FORMAT"]
-        # JointSNVMix does not have FORMAT column.  This one is
-        # optional.
+        # JointSNVMix sometimes does not have FORMAT column.  This one
+        # is optional.
         x1 = matrix.headers[:len(vcf_headers)]
         x2 = matrix.headers[len(vcf_headers):]
         if len(matrix.headers) == 8:
@@ -170,7 +171,7 @@ class Variant:
     # genotype_names   list of strings.
     #                  Can be empty list if no FORMAT (jointsnvmix).
     # sample2genodict  Can be empty dict if no FORMAT.
-    # caller           Caller
+    # caller           Caller object
     def __init__(
         self, chrom, pos, id_, ref, alt, qual, filter_,
         info_names, infodict, samples, genotype_names, sample2genodict,
@@ -729,42 +730,79 @@ class SomaticSniperCaller(Caller):
         call = _parse_vcf_value(genodict["GT"], len_exactly=1)[0]
         return Call(num_ref, num_alt, total_reads, vaf, call)
     def get_filter(self, var):
-        # PASS, REFERENCE, GERMLINE, LOH, UNKNOWN.
+        # Return:
+        # PASS, REFERENCE, GERMLINE, LOH, UNKNOWN, <Blank>
+        # Can be a comma-separated list of these.
         
         # FILTER   .
         # Information embedded into FORMAT.
         # ##FORMAT=<ID=SS,Number=1,Type=Integer,
         #   Description="Variant status relative to non-adjacent Normal,
         #   0=wildtype,1=germline,2=somatic,3=LOH,4=unknown">
+        # ##FORMAT=<ID=SSC,Number=1,Type=Integer,Description="Somatic Score">
 
-        # Order of samples should be:
-        # <normal> <tumor>
-        assert len(var.samples) == 2, "SomaticSniper should have two samples"
-        s0, s1 = var.samples
-        g0, g1 = var.sample2genodict[s0], var.sample2genodict[s1]
-        assert "SS" in g0
-        assert "SS" in g1
-        ss0 = g0["SS"]
-        ss1 = g1["SS"]
-        # First sample should be germline.
-        assert ss0 in ["0", "1", "2", "3", "4"]
-        assert ss1 in ["0", "1", "2", "3", "4"]
-        assert ss0 in ["0", "1"], "Invalid SS for germline: %s" % ss0
+        
+        # This can get tricky if the file has multiple samples (and
+        # germlines) merged.  Try to figure out which sample is which,
+        # and return the FILTERs for the tumor samples.
+        assert len(var.samples) >= 2, \
+               "SomaticSniper should have at least two samples"
+        values = []
+        for sample in var.samples:
+            gdict = var.sample2genodict[sample]
+            assert "SS" in gdict
+            assert "SSC" in gdict
+            ssc = _parse_vcf_value(gdict["SSC"])
+            # Germline sample should not have SomaticScore.
+            if not ssc:
+                continue
+            ss = gdict["SS"]
+            assert ss in ["0", "1", "2", "3", "4"]
 
-        if ss1 == "0":
-            return "REFERENCE"
-        elif ss1 == "1":
-            return "GERMLINE"
-        elif ss1 == "2":
-            return "PASS"
-        elif ss1 == "3":
-            return "LOH"
-        return "UNKNOWN"
+            # Return the value for the tumor sample.
+            if ss == "0":
+                values.append("REFERENCE")
+            elif ss == "1":
+                values.append("GERMLINE")
+            elif ss == "2":
+                values.append("PASS")
+            elif ss == "3":
+                values.append("LOH")
+            else:
+                values.append("UNKNOWN")
+        return ",".join(values)
+
+        ## Order of samples should be:
+        ## <normal> <tumor>
+        #s0, s1 = var.samples
+        #g0, g1 = var.sample2genodict[s0], var.sample2genodict[s1]
+        #assert "SS" in g0
+        #assert "SS" in g1
+        #ss0 = g0["SS"]
+        #ss1 = g1["SS"]
+        ## First sample should be germline.
+        #assert ss0 in ["0", "1"], "Invalid SS for germline: %s" % ss0
+        #assert ss1 in ["0", "1", "2", "3", "4"]
+
+        ## Return the value for the tumor sample.
+        #if ss1 == "0":
+        #    return "REFERENCE"
+        #elif ss1 == "1":
+        #    return "GERMLINE"
+        #elif ss1 == "2":
+        #    return "PASS"
+        #elif ss1 == "3":
+        #    return "LOH"
+        #return "UNKNOWN"
     
     def is_pass(self, filter_str):
-        assert filter_str in [
-            "PASS", "REFERENCE", "GERMLINE", "LOH", "UNKNOWN"]
-        return filter_str == "PASS"
+        filters = filter_str.split(",")
+        for f in filters:
+            assert f in [
+                "PASS", "REFERENCE", "GERMLINE", "LOH", "UNKNOWN"]
+            if f == "PASS":
+                return True
+        return False
 
 
 class StrelkaCaller(Caller):
@@ -960,25 +998,37 @@ class MuSECaller(Caller):
         call = _parse_vcf_value(genodict["GT"], len_exactly=1)[0]
         return Call(num_ref, num_alt, total_reads, vaf, call)
     def get_filter(self, var):
+        # Return:
         # PASS, Tier1, Tier2, Tier3, Tier4, Tier5
+        # Can be comma-separated combination as well.
         
         # MuSE uses "PASS", "Tier1", "Tier2", "Tier3", "Tier4", "Tier5".
         # INFO:SOMATIC  If present, indicate somatic mutation.
         #               Seems like always there.
-        assert len(var.filter_) == 1
-        x = var.filter_[0]
-        assert x in ["PASS", "Tier1", "Tier2", "Tier3", "Tier4", "Tier5"]
-        return x
+
+        # Usually only 1 filter_ string.  However, if there are
+        # multiple samples in this file, can have multiple ones.
+        #assert len(var.filter_) == 1, "%r" % (var.filter_)
+        #x = var.filter_[0]
+
+        for x in var.filter_:
+            assert x in ["PASS", "Tier1", "Tier2", "Tier3", "Tier4", "Tier5"]
+        return ",".join(var.filter_)
 
     def is_pass(self, filter_str, wgs_or_wes):
         assert wgs_or_wes in ["wgs", "wes"]
-        assert filter_str in [
-            "PASS", "Tier1", "Tier2", "Tier3", "Tier4", "Tier5"]
-        # According to paper, use up to Tier4 for WES, and Tier5 for WGS.
-        if filter_str in ["PASS", "Tier1", "Tier2", "Tier3", "Tier4"]:
-            return True
-        if wgs_or_wes == "wes" and filter_str == "Tier5":
-            return True
+
+        # Pass if any one of these filters pass.
+        filters = filter_str.split(",")
+        for f in filters:
+            assert f in [
+                "PASS", "Tier1", "Tier2", "Tier3", "Tier4", "Tier5"], \
+                "Unrecognized MuSE filter: %s" % f
+            # According to paper, use up to Tier4 for WES, and Tier5 for WGS.
+            if f in ["PASS", "Tier1", "Tier2", "Tier3", "Tier4"]:
+                return True
+            if wgs_or_wes == "wgs" and f == "Tier5":
+                return True
         return False
 
 
@@ -1122,19 +1172,39 @@ CALLERS = [
     ]
 
 
-def read(filename):
+def read(filename, nrows=None):
     # Return a VCFFile object.
     import AnnotationMatrix
 
     caller = get_caller(filename)
     assert caller, "Can't identify caller: %s" % filename
-    matrix = AnnotationMatrix.read(filename, header_char="##")
+    matrix = AnnotationMatrix.read(filename, header_char="##", nrows=nrows)
     return VCFFile(matrix, caller)
 
 
 def write(handle_or_file, vcf):
     import AnnotationMatrix
     AnnotationMatrix.write(handle_or_file, vcf.matrix)
+
+
+def filter_vcf_file(infile, outfile, wgs_or_wes):
+    # Filter a VCF file based on the FILTER column.
+    from genomicode import filelib
+    from genomicode import AnnotationMatrix
+
+    filelib.assert_exists_nz(infile)
+    vcf = read(infile)
+    I = []
+    for i in range(vcf.num_variants()):
+        var = get_variant(vcf, i)
+        f = var.caller.get_filter(var)
+        args = (f,)
+        if var.caller.name == "MuSE":
+            args = (f, wgs_or_wes)
+        if var.caller.is_pass(*args):
+            I.append(i)
+    vcf.matrix = AnnotationMatrix.rowslice(vcf.matrix, I)
+    write(outfile, vcf)
 
 
 def get_caller(vcf_file):
@@ -1685,7 +1755,7 @@ def _safe_div_z(x1, x2):
     if x2 is None:
         x2 = 0
     if abs(x2) < 1E-20:
-        return 0
+        return 0.0
     return float(x1)/x2
 
 

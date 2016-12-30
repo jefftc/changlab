@@ -103,6 +103,7 @@ def write_prism_file(filename, MATRIX, gene_names):
 
 def main():
     import argparse
+    import math
     
     import arrayio
     from genomicode import config
@@ -163,6 +164,9 @@ def main():
     group.add_argument(
         "--legend_off", action="store_true",
         help="Do not draw legend.")
+    group.add_argument(
+        "--horizontal_lines", action="store_true",
+        help="Draw horizontal lines.")
 
     # Parse the input arguments.
     args = parser.parse_args()
@@ -288,6 +292,12 @@ def main():
         x = range(1, len(y)+1)
         R_fn("lines", x, y, lwd=lwd, col=col[i])
         R_fn("points", x, y, pch=19, cex=1, col=col[i])
+
+    if args.horizontal_lines:
+        y1 = int(math.ceil(ylim[0]))
+        y2 = int(math.floor(ylim[1]))
+        for y in range(y1, y2+1):
+            R_fn("lines", (1, MATRIX.ncol()+1), (y, y), lty=3, col="#A0A0A0")
 
     if not args.legend_off:
         R_fn(

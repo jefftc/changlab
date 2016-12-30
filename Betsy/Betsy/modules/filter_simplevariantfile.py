@@ -20,12 +20,6 @@ class Module(AbstractModule):
         x = [x.strip() for x in x]
         remove_samples = x
 
-        #x = mlib.get_user_option(
-        #    user_options, "remove_radia_rna_samples",
-        #    allowed_values=["no", "yes"])
-        #remove_radia_rna_samples = (x == "yes")
-
-
         x = mlib.get_user_option(
             user_options, "apply_filter", allowed_values=["no", "yes"])
         apply_filter = (x == "yes")
@@ -34,19 +28,20 @@ class Module(AbstractModule):
             user_options, "wgs_or_wes", not_empty=True,
             allowed_values=["wgs", "wes"])
 
+        name2caller = {}  # name -> Caller object
+        for caller in vcflib.CALLERS:
+            caller = caller()
+            assert caller.name not in name2caller
+            name2caller[caller.name] = caller
+
         TEMPFILE = "temp.txt"
         handle = open(TEMPFILE, 'w')
         it = filelib.read_row(simple_file, header=1)
         print >>handle, "\t".join(it._header)
         for d in it:
-
             # Find the caller.
-            for caller in vcflib.CALLERS:
-                caller = caller()
-                if caller.name == d.Caller:
-                    break
-            else:
-                raise AssertionError, "Unknown caller: %s" % caller.name
+            assert d.Caller in name2caller, "Unknown caller: %s" % d.Caller
+            caller = name2caller[d.Caller]
             
             # remove_sample
             if d.Sample in remove_samples:
@@ -62,34 +57,6 @@ class Module(AbstractModule):
                 if not caller.is_pass(*args):
                     continue
 
-            ## # filter_by_min_alt_reads
-            ## if min_alt_reads > 0:
-            ##     alt_reads = 0
-            ##     if d.Num_Alt:
-            ##         x = d.Num_Alt
-            ##         x = x.split(",")
-            ##         x = [int(x) for x in x]
-            ##         x = max(x)
-            ##         alt_reads = x
-            ##     if alt_reads < min_alt_reads:
-            ##         continue
-
-            ## # filter_by_min_total_reads
-            ## if min_total_reads > 0:
-            ##     x = d.Total_Reads
-            ##     x = x.split(",")
-            ##     x = [int(x) for x in x]
-            ##     x = max(x)
-            ##     total_reads = x
-            ##     if total_reads < min_total_reads:
-            ##         continue
-                
-            ## # filter_by_min_GQ
-            ## # If GQ isn't provided, then ignore this filter.
-            ## if min_gq > 0 and d.GQ:
-            ##     GQ = float(d.GQ)
-            ##     if GQ < min_gq:
-            ##         continue
             print >>handle, "\t".join(d._cols)
         handle.close()
 

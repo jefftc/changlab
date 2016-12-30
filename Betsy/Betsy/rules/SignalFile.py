@@ -125,7 +125,8 @@ ClassLabelFile = DataType(
     "ClassLabelFile",
     ATTR_CONTENTS,
     ATTR_PREPROCESS,
-    help="CLS format file with categorical labels.",
+    help="CLS format file with categorical labels.  Usually easier to use "
+    "SimpleClassFile."
     )
 
 UNPROC_ATTRIBUTES = [

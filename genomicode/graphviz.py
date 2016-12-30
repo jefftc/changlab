@@ -52,7 +52,20 @@ def make_graph(
 
     forcelabels = True
 
+    # To speed up dot:
+    # - nslimit         Big effect, but not much time savings.
+    #   nslimit1        Not much effect.
+    # - maxiter         fdp, neato
+    # - mclimit         dot           ~100 speeds up a bit.  1-10 fast, but bad
+    # - splines=line    Looks bad.  Not much speedup over mclimig.
+    # Run with -v to see where it is spending its time.
+    # Probably mclimit makes biggest difference.
+
     G = pgv.AGraph(dim=2, directed=directed)
+    #G.graph_attr["splines"] = "line"
+    #G.graph_attr["nslimit"] = 0.5
+    #G.graph_attr["nslimit1"] = 0.5
+    G.graph_attr["mclimit"] = 1
     if forcelabels:
         G.graph_attr["forcelabels"] = "true"
     for node in nodes:

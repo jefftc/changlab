@@ -23,6 +23,9 @@ class Module(AbstractModule):
             assert x, (
                 "SimpleLabelFile must have headers Sample and Class.  "
                 "Headers are: %s" % parselib.pretty_list(d._header))
+
+            if not d.Class:
+                d.Class = "UNLABELED"
             samples.append(d.Sample)
             classes.append(d.Class)
 
@@ -32,6 +35,7 @@ class Module(AbstractModule):
         for i in range(len(samples)):
             assert samples[i] not in sample2class, \
                    "Duplicate sample: %s" % samples[i]
+            # If there is no class label, then ignore it.
             sample2class[samples[i]] = classes[i]
         # Get a list of the unique classes.  Maintain order.
         class_names = []

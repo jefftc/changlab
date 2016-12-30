@@ -138,15 +138,20 @@ combat=/Volumes/Users/jchang/changlab/Rlib/ComBat.R
 [NGS SOFTWARE]
 
 # Miscellaneous utilities.
+
+# Samtools, bcftools, htslib
 samtools=/usr/local/bin/samtools
 bcftools=/usr/local/bin/bcftools
-vcfutils=/usr/local/bin/vcfutils.pl
-vcftools=/usr/local/bin/vcftools
 bgzip=/usr/local/bin/bgzip
 tabix=/usr/local/bin/tabix
+
+vcfutils=/usr/local/bin/vcfutils.pl
+vcftools=/usr/local/bin/vcftools
 bedtools=/usr/local/bin/bedtools
 gtfutils=/usr/local/bin/gtfutils
 bam2fastx=/usr/local/bin/bam2fastx
+
+
 
 
 [GATK and Picard]
@@ -320,11 +325,13 @@ gp_passwd=
 [GENE MAP]
 
 # Experimental.  Please ignore.
+# Leave host and port blank if connecting through socket.
 gm_user=genemap
 gm_passwd=g33m4p
 gm_db=genemap
 gm_host=localhost
 gm_port=3306
+gm_socket=
 
 
 [TCGA]

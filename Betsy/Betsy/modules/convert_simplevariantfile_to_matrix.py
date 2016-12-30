@@ -103,14 +103,31 @@ class Module(AbstractModule):
 
         # Count the number of callers that called a variant at each
         # position for each sample.
-        samp2coord2nc = {}  # sample -> chrom, pos, ref, alt -> num_callers
+        samp2coord2caller = {} # sample -> chrom, pos, ref, alt -> caller -> 1
+        # Need to do this first, to make sure each caller is counted
+        # at most once.  This is to account for germline samples that
+        # is called by each caller multiple times.
         for x in call_data:
             chrom, pos, ref, alt, sample, caller, call = x
             coord = chrom, pos, ref, alt
-            if sample not in samp2coord2nc:
-                samp2coord2nc[sample] = {}
-            nc = samp2coord2nc[sample].get(coord, 0) + 1
-            samp2coord2nc[sample][coord] = nc
+            if sample not in samp2coord2caller:
+                samp2coord2caller[sample] = {}
+            if coord not in samp2coord2caller[sample]:
+                samp2coord2caller[sample][coord] = {}
+            samp2coord2caller[sample][coord][caller] = 1
+        samp2coord2nc = {}  # sample -> chrom, pos, ref, alt -> num_callers
+        for sample in samp2coord2caller:
+            samp2coord2nc[sample] = {}
+            for coord in samp2coord2caller[sample]:
+                samp2coord2nc[sample][coord] = len(
+                    samp2coord2caller[sample][coord])
+        #for x in call_data:
+        #    chrom, pos, ref, alt, sample, caller, call = x
+        #    coord = chrom, pos, ref, alt
+        #    if sample not in samp2coord2nc:
+        #        samp2coord2nc[sample] = {}
+        #    nc = samp2coord2nc[sample].get(coord, 0) + 1
+        #    samp2coord2nc[sample][coord] = nc
 
         # Format everything into an annotation matrix.
         headers0 = []

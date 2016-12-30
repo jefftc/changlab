@@ -705,8 +705,10 @@ class RowIterator:
 #   delimiter     Character used for the delimiter.  default "\t".
 #   strip
 #   skip          Number of lines to skip at the beginning.
+#   comment_char  Ignore lines that start with this character.
 #   pad_cols      If not enough columns in a row, pad with this value.
-#   commend_char  Ignore lines that start with this character.
+#   header
+#   format
 def read_row(file_or_handle, *args, **keywds):
     """Iterate over each line of a tab-delimited file.  The iterator
     object contains the following member variables:

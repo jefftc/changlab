@@ -93,7 +93,7 @@ def reconstruct_sequence(seq, pos, cigar):
         elif op == "H":     # hard clipping
             pass            # not entirely sure we don't increment pos
         elif op == "I":
-            assert n < 100, n
+            #assert n < 100, n
             assert n <= len(seq)
             p = (pos - 1) + 0.01
             for i in range(n):
@@ -119,3 +119,12 @@ def reconstruct_sequence(seq, pos, cigar):
         else:
             raise AssertionError, "Unknown operation %s" % op
     return pos2base
+
+
+def reconstruct_quality(qual, pos, cigar):
+    # Return a dictionary of position -> phred scaled quality score
+    pos2qual = reconstruct_sequence(qual, pos, cigar)
+    # Convert to a quality score.
+    for p, q in pos2qual.iteritems():
+        pos2qual[p] = ord(q)-33
+    return pos2qual

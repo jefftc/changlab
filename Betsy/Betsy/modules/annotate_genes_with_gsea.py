@@ -168,6 +168,7 @@ def make_gsea_command(
         "--permutation_type", sq(permutation_type),
         "--database", sq(database),
         "--min_match_score", 0.80,
+        "--clobber",
         sq(expression_file),
         sq(gsea_path),
         ]

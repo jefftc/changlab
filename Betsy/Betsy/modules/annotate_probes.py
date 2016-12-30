@@ -54,10 +54,10 @@ class Module(AbstractModule):
         cmd = [
             "python",
             sq(annotate),
-            "--header", score.header,
+            "--header", sq(score.header),
             ]
         for x in to_add:
-            x = ["--platform", x]
+            x = ["--platform", sq(x)]
             cmd.extend(x)
         cmd.append(in_data.identifier)
         cmd = " ".join(cmd)
