@@ -117,14 +117,14 @@ def prioritize_platforms(platform_names):
     return prioritized_names
 
 
-def categorize_headers(MATRIX):
+def categorize_headers(MATRIX, remove_version=True):
     # Return a dictionary of category -> header.
     
     #name_fix = {
     #    "entrez_ID_human" : "Entrez_ID_human",
     #    "entrez_ID_symbol_human" : "Entrez_Symbol_human",
     #    }
-    scores = score_matrix(MATRIX)
+    scores = score_matrix(MATRIX, remove_version=remove_version)
 
     # Filter based on a minimum score.
     scores = [x for x in scores if x.max_score >= 0.5]
@@ -152,10 +152,10 @@ def categorize_headers(MATRIX):
     return cat2header
 
 
-def find_header(MATRIX, category):
+def find_header(MATRIX, category, remove_version=True):
     # Returns a header from MATRIX that matches this category or None.
 
-    cat2header = categorize_headers(MATRIX)
+    cat2header = categorize_headers(MATRIX, remove_version=remove_version)
     return cat2header.get(category)
 
 

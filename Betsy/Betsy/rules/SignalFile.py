@@ -117,15 +117,20 @@ SimpleClassFile = DataType(
     # Sample   Class
     ATTR_CONTENTS,
     ATTR_PREPROCESS,
-    help="A simple tab-delimited format with labels for each sample.  "
-    "Can have two or more different classes.",
+    help='A file that assigns a "class" to each sample in an expression '
+    "file.  This should be tab-delimited file with two columns.  The first "
+    "line should contain headers:\n"
+    "Sample    Class\n"
+    "\n"
+    "There should be two or more different classes."
     )
 
 ClassLabelFile = DataType(
     "ClassLabelFile",
     ATTR_CONTENTS,
     ATTR_PREPROCESS,
-    help="CLS format file with categorical labels.",
+    help="CLS format file with categorical labels.  Usually easier to use "
+    "SimpleClassFile."
     )
 
 UNPROC_ATTRIBUTES = [
@@ -438,6 +443,13 @@ all_modules = [
             "genes_with_highest_var", default="",
             help="Keep just this number of genes with the highest variance, "
             "e.g. 250"),
+        OptionDef(
+            "only_nonempty_gene_names", default="no",
+            help="Keep only rows with given gene symbols.  Values: yes, no."),
+        OptionDef(
+            "select_row_maxvalue", default="",
+            help="Keep only rows whose maximum value is at least this value."),
+        
         Constraint("format", MUST_BE, "tdf"),
         Consequence("format", SAME_AS_CONSTRAINT),
         Constraint("logged", MUST_BE, "yes"),

@@ -122,6 +122,7 @@ missing).
               For interfacing with GraphViz.
   rpy2        http://rpy2.bitbucket.org
               To interface to R.
+  psutil      https://github.com/giampaolo/psutil
 
   REQUIRED libraries.  For reading and writing Excel files.
   xlwt       https://pypi.python.org/pypi/xlwt
@@ -137,6 +138,7 @@ missing).
   pandas     http://pandas.pydata.org
              Will speed up some file I/O if available.
              But otherwise not necessary.
+  pysam      Some scripts use it for reading SAM/BAM files.
 
 
 - R (+ libraries)

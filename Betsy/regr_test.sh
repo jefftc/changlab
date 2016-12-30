@@ -131,6 +131,7 @@ betsy_run.py --network_png test13.png --network_json test13.txt \
 # Merge VCFFolder.
 betsy_run.py --network_png test14.png --network_json test14.txt \
   --input ManyCallerVCFFolders \
+  --dattr ManyCallerVCFFolders.caller_suite=cancer_with_rna \
   --input UnprocessedSignalFile \
   --dattr UnprocessedSignalFile.preprocess=tpm \
   --input BamFolder \
@@ -139,14 +140,14 @@ betsy_run.py --network_png test14.png --network_json test14.txt \
   --dattr BamFolder.aligner=star \
   --input ReferenceGenome \
   --output SimpleVariantMatrix \
-  --dattr SimpleVariantMatrix.vartype=snp \
+  --dattr SimpleVariantMatrix.caller_suite=cancer_with_rna \
   --dattr SimpleVariantMatrix.filtered_calls=yes \
-  --dattr SimpleVariantMatrix.annotated=yes \
+  --dattr SimpleVariantMatrix.annotated_with_annovar=yes \
   --dattr SimpleVariantMatrix.with_coverage=yes \
   --dattr SimpleVariantMatrix.with_rna_coverage=yes \
   --dattr SimpleVariantMatrix.with_gxp=yes \
   --dattr SimpleVariantMatrix.with_cancer_genes=yes \
-  --mattr filter_by_min_total_reads=20 >& test14.log
+  --mattr filter_by_min_total_reads=20  >& test14.log
 # Call germline SNPs.
 betsy_run.py --network_png test15.png --network_json test15.txt \
   --input BamFolder \
@@ -159,7 +160,6 @@ betsy_run.py --network_png test15.png --network_json test15.txt \
   --dattr BamFolder.aligner=bwa_mem \
   --input ReferenceGenome \
   --output SimpleVariantMatrix \
-  --dattr SimpleVariantMatrix.vartype=snp \
   --dattr VCFFolder.aligner=bwa_mem \
   --mattr wgs_or_wes=wes >& test15.log
 # RNA-Seq RSEM.
@@ -183,8 +183,8 @@ betsy_run.py --network_png test17.png --network_json test17.txt \
   --output UnprocessedSignalFile \
   --dattr UnprocessedSignalFile.logged=no \
   --dattr UnprocessedSignalFile.preprocess=counts \
+  --dattr RNASeqUnprocessedSignalFile.adapters_trimmed=yes \
   --dattr BamFolder.aligner=star \
-  --dattr BamFolder.adapters_trimmed=yes \
   --mattr adapters_fasta=adapters/TruSeq3-PE-2.fa >& test17.log
 # Call somatic SNPs, no Radia caller.
 betsy_run.py --network_png test18.png --network_json test18.txt \
@@ -199,9 +199,8 @@ betsy_run.py --network_png test18.png --network_json test18.txt \
   --input ReferenceGenome \
   --input NormalCancerFile \
   --output SimpleVariantMatrix \
-  --dattr SimpleVariantMatrix.vartype=snp \
+  --dattr SimpleVariantMatrix.caller_suite=cancer \
   --dattr VCFFolder.aligner=bwa_mem \
-  --dattr ManyCallerVCFFolders.somatic=yes \
   --mattr wgs_or_wes=wes >& test18.log
 # Variant calling with Thunderbolts bam file.
 # duplicates_marked=no
@@ -218,17 +217,15 @@ betsy_run.py --network_png test19.png --network_json test19.txt \
   --input ReferenceGenome \
   --input NormalCancerFile \
   --output SimpleVariantMatrix \
-  --dattr ManyCallerVCFFolders.somatic=yes \
   --dattr BamFolder.duplicates_marked=no \
   --dattr BamFolder.base_quality_recalibrated=no \
   --dattr VCFFolder*.aligner=bwa_mem \
-  --dattr SimpleVariantFile.filtered=yes \
-  --dattr SimpleVariantMatrix.vartype=snp \
-  --dattr SimpleVariantMatrix.annotated=yes \
+  --dattr SimpleVariantMatrix.caller_suite=cancer \
+  --dattr SimpleVariantMatrix.annotated_with_annovar=yes \
   --dattr SimpleVariantMatrix.with_cancer_genes=yes \
   --dattr SimpleVariantMatrix.with_coverage=yes \
   --dattr SimpleVariantMatrix.filtered_calls=yes \
-  --dattr SimpleVariantMatrix.filtered_variants=yes >& test19.log
+  --dattr SimpleVariantMatrix.filtered_vars=yes >& test19.log
 # Call somatic SNPs, with Radia caller, add everything.
 betsy_run.py --network_png test20.png --network_json test20.txt \
   --input BamFolder \
@@ -240,25 +237,22 @@ betsy_run.py --network_png test20.png --network_json test20.txt \
   --input UnprocessedSignalFile \
   --dattr UnprocessedSignalFile.preprocess=tpm \
   --output SimpleVariantMatrix \
-  --dattr ManyCallerVCFFolders.somatic=yes \
-  --dattr ManyCallerVCFFolders.with_rna_callers=yes \
-  --dattr SimpleVariantMatrix.vartype=snp \
+  --dattr SimpleVariantMatrix.caller_suite=cancer_with_rna \
   --dattr VCFFolder*.aligner=bwa_mem \
   --dattr VCFFolder*.aligner=star \
   --mattr mutect_dbsnp_vcf=MuTect/dbsnp_132_b37.leftAligned.vcf \
   --mattr mutect_cosmic_vcf=MuTect/b37_cosmic_v54_120711.vcf \
   --mattr muse_dbsnp_vcf=MuSE/dbsnp_132_b37.leftAligned.vcf.gz \
   --mattr radia_genome_assembly=hg19 \
-  --mattr snp_eff_genome=GRCh37.75 \
-  --dattr SimpleVariantMatrix.annotated=yes \
-  --mattr annovar_buildver=hg19 \
-  --dattr SimpleVariantFile.filtered=yes \
   --mattr wgs_or_wes=wes \
-  --mattr remove_samples=PIM001_G \
+  --dattr SimpleVariantMatrix.annotated_with_annovar=yes \
+  --mattr annovar_buildver=hg19 \
+  --dattr SimpleVariantMatrix.annotated_with_snpeff=yes \
+  --mattr snpeff_genome=GRCh37.75 \
   --mattr remove_radia_rna_samples=yes \
   --dattr SimpleVariantMatrix.filtered_calls=yes \
   --mattr filter_by_min_total_reads=20 \
-  --dattr SimpleVariantMatrix.filtered_variants=yes \
+  --dattr SimpleVariantMatrix.filtered_vars=yes \
   --mattr nonsynonymous_and_stopgain_only=yes \
   --dattr SimpleVariantMatrix.with_coverage=yes \
   --dattr SimpleVariantMatrix.with_cancer_genes=yes \
@@ -266,6 +260,8 @@ betsy_run.py --network_png test20.png --network_json test20.txt \
   --dattr SimpleVariantMatrix.with_gxp=yes \
   --dattr SimpleVariantMatrix.with_rna_coverage=yes >& test20.log
 # Call somatic indels.
+# This test is obsolete.  Change to one with with new caller_suite
+# when available.
 betsy_run.py --network_png test21.png --network_json test21.txt \
   --input BamFolder \
   --dattr BamFolder.aligner=bwa_mem \
@@ -274,15 +270,13 @@ betsy_run.py --network_png test21.png --network_json test21.txt \
   --input UnprocessedSignalFile \
   --dattr UnprocessedSignalFile.preprocess=tpm \
   --output SimpleVariantMatrix \
-  --dattr SimpleVariantMatrix.vartype=indel \
-  --dattr ManyCallerVCFFolders.somatic=yes \
+  --dattr SimpleVariantMatrix.caller_suite=cancer \
   --dattr VCFFolder*.aligner=bwa_mem \
   --mattr wgs_or_wes=wes \
-  --dattr SimpleVariantFile.filtered=yes \
   --mattr remove_samples=PIM001_G \
   --dattr SimpleVariantMatrix.filtered_calls=yes \
   --mattr filter_by_min_total_reads=20 \
-  --dattr SimpleVariantMatrix.annotated=yes \
+  --dattr SimpleVariantMatrix.annotated_with_annovar=yes \
   --mattr annovar_buildver=hg19 \
   --dattr SimpleVariantMatrix.with_coverage=yes \
   --dattr SimpleVariantMatrix.with_cancer_genes=yes \

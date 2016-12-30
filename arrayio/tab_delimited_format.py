@@ -265,6 +265,19 @@ def read(handle, hrows=None, hcols=None, datatype=float):
         # Assume that I was passed a function.
         convert_fn = datatype
 
+    if convert_fn == jmath.safe_float:
+        # Try and convert to an integer instead.
+        is_int = True
+        for i in range(len(matrix)):
+            for j in range(len(matrix[i])):
+                if not jmath.is_int(matrix[i][j]):
+                    is_int = False
+                    break
+            if not is_int:
+                break
+        if is_int:
+            convert_fn = jmath.safe_int
+
     if convert_fn:
         check_each_row = False
         try:
@@ -289,6 +302,10 @@ def read(handle, hrows=None, hcols=None, datatype=float):
                     raise ValueError("%s\nProblem with row %d: %s" % (
                         str(err2), i + 1, row))
             raise AssertionError("Error converting values.")
+
+        
+        
+
 
     # Set ROW_ID and COL_ID to reasonable defaults.
     synonyms = {}

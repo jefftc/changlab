@@ -6,14 +6,14 @@
 # _connect_mysql
 # _disconnect_mysql
 
-def query(query, user, passwd, db, host, port):
+def query(query, user, passwd, db, host, port, socket):
     import time
     import MySQLdb
 
     start = time.time()
     num_tries = 0
     while 1:
-        DB = _connect_mysql(user, passwd, db, host, port)
+        DB = _connect_mysql(user, passwd, db, host, port, socket)
         cursor = DB.cursor()
         num_tries += 1
         try:
@@ -21,7 +21,7 @@ def query(query, user, passwd, db, host, port):
         except MySQLdb.OperationalError, x:
             if (str(x).find("MySQL server has gone away") >= 0 and
                 num_tries < 5):
-                _disconnect_mysql(user, db, host, port)
+                _disconnect_mysql(user, db, host, port, socket)
                 continue
             elif str(x).find("packet bigger than 'max_allowed_packet'") >= 0:
                 x = "%s\n%s\n%d bytes" % (str(x), query, len(query))
@@ -51,7 +51,7 @@ def _dnslookup(hostname):
     return socket.gethostbyname(hostname)
 
 DB_CACHE = {}  # (user, db, host, port) -> DB object
-def _connect_mysql(user, passwd, db, host, port):
+def _connect_mysql(user, passwd, db, host, port, socket):
     # Return a DB object.
     global DB_CACHE
     import time
@@ -63,10 +63,10 @@ def _connect_mysql(user, passwd, db, host, port):
 
     # If host is not an IP address, convert it to one to prevent
     # repeated DNS lookups.
-    if host and not re.match("^[.\d]+$", host):
+    if host and host != "localhost" and not re.match("^[.\d]+$", host):
         host = _dnslookup(host)
 
-    key = user, db, host, port
+    key = user, db, host, port, socket
     if key in DB_CACHE:
         return DB_CACHE[key]
 
@@ -83,12 +83,18 @@ def _connect_mysql(user, passwd, db, host, port):
     start = time.time()
     while 1:
         try:
-            if host and port is not None:
+            keywds = {
+                "user" : user,
+                "passwd" : passwd,
+                "db" : db,
+                }
+            if host and port:
                 port = int(port)
-                DB = MySQLdb.connect(
-                    user=user, passwd=passwd, db=db, host=host, port=port)
-            else:
-                DB = MySQLdb.connect(user=user, passwd=passwd, db=db)
+                keywds["port"] = port
+                keywds["host"] = host
+            if socket:
+                keywds["unix_socket"] = socket
+            DB = MySQLdb.connect(**keywds)
         except MySQLdb.OperationalError, x:
             for err in known_db_errors:
                 if str(x).find(err) >= 0:
@@ -102,9 +108,9 @@ def _connect_mysql(user, passwd, db, host, port):
     DB_CACHE[key] = DB
     return DB
 
-def _disconnect_mysql(user, db, host, port):
+def _disconnect_mysql(user, db, host, port, socket):
     global DB_CACHE
-    key = user, db, host, port
+    key = user, db, host, port, socket
     if key not in DB_CACHE:
         return
     DB_CACHE[key].close()

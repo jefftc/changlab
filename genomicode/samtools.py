@@ -34,9 +34,16 @@ class SAMAlignment:
 def parse_sam(file_or_handle):
     # yield SAMAlignment objects
     from genomicode import filelib
-    
-    for cols in filelib.read_cols(file_or_handle):
-        assert len(cols) >= 11
+
+
+    # Somehow, csv raises errors on some BAM files read directly with
+    # "samtools view" (via the subprocess module).  Just implement our
+    # own column splitting.
+    #for cols in filelib.read_cols(file_or_handle):
+    handle = filelib.openfh(file_or_handle)
+    for line in handle:
+        cols = line.rstrip("\r\n").split("\t")
+        assert len(cols) >= 11, "Invalid line (%d):\n%s" % (len(cols), line)
         qname = cols[0]
         flag = int(cols[1])
         rname = cols[2]
@@ -93,7 +100,7 @@ def reconstruct_sequence(seq, pos, cigar):
         elif op == "H":     # hard clipping
             pass            # not entirely sure we don't increment pos
         elif op == "I":
-            assert n < 100, n
+            #assert n < 100, n
             assert n <= len(seq)
             p = (pos - 1) + 0.01
             for i in range(n):
@@ -119,3 +126,12 @@ def reconstruct_sequence(seq, pos, cigar):
         else:
             raise AssertionError, "Unknown operation %s" % op
     return pos2base
+
+
+def reconstruct_quality(qual, pos, cigar):
+    # Return a dictionary of position -> phred scaled quality score
+    pos2qual = reconstruct_sequence(qual, pos, cigar)
+    # Convert to a quality score.
+    for p, q in pos2qual.iteritems():
+        pos2qual[p] = ord(q)-33
+    return pos2qual

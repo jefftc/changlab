@@ -6,7 +6,7 @@ convert_gene_ids
 """
 # _convert_gene_ids_biomart
 # _convert_gene_ids_local
-# _convert_entrez_symbol_to_entrez
+# _convert_entrez_symbol_to_entrez    # uses genefinder
 # _find_entrez_gene
 #
 # _clean_genes_for_biomart
@@ -239,6 +239,7 @@ FIND_GENE_ERROR = None
 def _find_entrez_gene(gene_symbol, tax_id):
     # Return tuple of (gene_id, gene_symbol) or None.
     global FIND_GENE_ERROR
+    import MySQLdb
     from genomicode import genefinder
 
     FIND_GENE_ERROR = None
@@ -247,6 +248,11 @@ def _find_entrez_gene(gene_symbol, tax_id):
     try:
         x = genefinder.find_gene(gene_symbol, tax_id=tax_id)
     except AssertionError, x:
+        FIND_GENE_ERROR = str(x)
+        return None
+    except MySQLdb.OperationalError, x:
+        if str(x).find("Can't connect to MySQL server") < 0:
+            raise
         FIND_GENE_ERROR = str(x)
         return None
     if x:

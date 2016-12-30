@@ -92,7 +92,8 @@ def find_diffexp_genes(
     for x in classes:
         counts[x] = counts.get(x, 0) + 1
     assert sorted(counts) == [0, 1], "Only one class represented."
-    if algorithm != "fold_change":
+
+    if algorithm not in  ["fold_change", "deseq2"]:
         assert counts[0] >= 2, "There must be at least 2 of each class."
         assert counts[1] >= 2, "There must be at least 2 of each class."
 

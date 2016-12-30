@@ -72,12 +72,13 @@ class Module(AbstractModule):
             jobs.append(x)
         
         # Generate commands for each of the files.
+        sq = parallel.quote
         commands = []
         for x in jobs:
             bam_filename, out_file = x
             x = alignlib.make_htseq_count_command(
                 bam_filename, gtf_file, sort_order, ht_stranded, mode=mode)
-            x = "%s >& %s" % (x, out_file)
+            x = "%s >& %s" % (x, sq(out_file))
             commands.append(x)
         metadata["commands"] = commands
         metadata["num_cores"] = num_cores

@@ -60,7 +60,6 @@ def count_duplicates(bam_filename):
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
     w, r = p.stdin, p.stdout
     w.close()
-    print "HERE 1", bam_filename
     for align in samtools.parse_sam(r):
         if align.flag & 0x400:
             num_dup += 1
