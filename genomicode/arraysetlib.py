@@ -38,7 +38,8 @@ def read_cls_file(filename):
     x = line2.strip().split()
     assert x
     assert x[0] == "#"
-    assert len(x) == num_classes+1
+    assert len(x) == num_classes+1, "Class mismatch %d %s: %s" % (
+        num_classes+1, x, filename)
     class_names = x[1:]
 
     # Parse the third line.

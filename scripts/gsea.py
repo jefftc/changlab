@@ -27,8 +27,7 @@ platform2gpplatform = {
     "HG_U133_Plus_2" : "HG_U133_Plus_2.chip",
     "Entrez_symbol_human" : None,
     "Entrez_Symbol_human" : None,
-    "entrez_ID_symbol_human" : None,
-    # Missing entrez_ID_human
+    #"Entrez_ID_human" : None,
 
     # Illumina_MusRef8_v1_1.chip uses IDs like:
     #   0005570647
@@ -46,9 +45,17 @@ def guess_chip_platform(M, min_match_score):
 
     #platform = arrayplatformlib.identify_platform_of_matrix(M)
     #assert platform, "I could not guess the platform for this file."
-    x = apl.score_matrix(M, min_score=0.01)
-    assert x, "I could not guess the platform for this file.%s" % x
-    best_score = x[0]
+    scores = apl.score_matrix(M, min_score=0.01)
+    assert scores, "I could not identify the platform for this file."
+
+    # Find the best score that can be converted to genepattern.
+    best_score = None
+    for x in scores:
+        if x.platform_name in platform2gpplatform:
+            best_score = x
+            break
+
+    assert best_score, "I could not identify the platform for this file."
     
     x = ""
     if best_score.max_score > 0:

@@ -89,7 +89,7 @@ class Module(AbstractModule):
                 annots.append(x)
             all_annots.append(annots)
         x = AnnotationMatrix.create_from_annotations(headers, all_annots)
-        matrix.named_matrices.append(("Annovar", x))
+        matrix.named_matrices.insert(0, ("Annovar", x))
         
         SimpleVariantMatrix.write(out_filename, matrix)
         

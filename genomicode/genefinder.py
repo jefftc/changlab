@@ -129,7 +129,7 @@ def find_many_genes_detailed(genes, tax_id=None):
             columns, "MASTERMAP", genes_str)
         x = dblib.query(
             q, config.gm_user, config.gm_passwd, config.gm_db, config.gm_host,
-            config.gm_port)
+            config.gm_port, config.gm_socket)
         for x in x:
             gene_id, name_in_db, is_official, source_db = x
             gene_id = int(gene_id)
@@ -144,7 +144,7 @@ def find_many_genes_detailed(genes, tax_id=None):
                 columns, table_name, genes_str)
             x = dblib.query(
                 q, config.gm_user, config.gm_passwd, config.gm_db,
-                config.gm_host, config.gm_port)
+                config.gm_host, config.gm_port, config.gm_socket)
             for x in x:
                 gene_id, name_in_db, is_official = x
                 gene_id = int(gene_id)
@@ -222,7 +222,7 @@ def find_discontinued(name, tax_id=None):
             columns, "DISCONTINUED", name)
     x = dblib.query(
         q, config.gm_user, config.gm_passwd, config.gm_db,
-        config.gm_host, config.gm_port)
+        config.gm_host, config.gm_port, config.gm_socket)
     gene_ids = []
     for x in x:
         old_gene_id, old_symbol, gene_id, tax_id_ = x
@@ -255,7 +255,7 @@ def _lookup_gene(id):
         table, id)
     x = dblib.query(
         q, config.gm_user, config.gm_passwd, config.gm_db, config.gm_host,
-        config.gm_port)
+        config.gm_port, config.gm_socket)
     for x in x:
         symbol, name, tax_id, organism = x
     return id, symbol, name, tax_id, organism
@@ -267,7 +267,7 @@ def _find_entrez_gene_table():
 
     x = dblib.query(
         "SHOW TABLES", config.gm_user, config.gm_passwd, config.gm_db,
-        config.gm_host, config.gm_port)
+        config.gm_host, config.gm_port, config.gm_socket)
     x = [x[0] for x in x]
     x = [x for x in x if x.startswith("entrez_gene_")]
     x.sort()
@@ -280,7 +280,7 @@ def _list_mapping_tables():
 
     x = dblib.query(
         "SHOW TABLES", config.gm_user, config.gm_passwd, config.gm_db,
-        config.gm_host, config.gm_port)
+        config.gm_host, config.gm_port, config.gm_socket)
     x = [x[0] for x in x]
     x = [x for x in x if x.startswith("MAP_")]
     x = sorted(x)   # will sort by table name, then date.

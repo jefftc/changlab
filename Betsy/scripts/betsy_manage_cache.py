@@ -69,6 +69,52 @@ def parse_clear_cache(clear_cache):
     return b
 
 
+def _list_module_directories(cache_path):
+    # Make a list of directories for all modules, sorted by decreasing
+    # modification time.
+    import os
+    
+    opj = os.path.join
+    x = os.listdir(cache_path)
+    # Only BETSY directories.
+    # index_bam_folder__B006__617b92ee4d313bcd0148b1ab6a91b12f
+    x = [x for x in x if len(x.split("__")) == 3]
+    schwartz = [(-os.path.getmtime(opj(cache_path, x)), x) for x in x]
+    schwartz.sort()
+    x = [x[-1] for x in schwartz]
+    return x
+
+
+def list_directory(cache_path):
+    module_paths = _list_module_directories(cache_path)
+    for i, x in enumerate(module_paths):
+        print "%3d.  %s" % (i+1, x)
+
+
+def change_directory(cache_path, arg):
+    import os
+    from genomicode import jmath
+    from genomicode import filelib
+    from genomicode import parallel
+
+    module_paths = _list_module_directories(cache_path)
+
+    if jmath.is_int(arg):
+        # Go to the ith most recent module_path
+        i = int(arg)
+        assert i > 0
+        assert i < len(module_paths), "There are only %d modules" % \
+               len(module_paths)
+        desired_path = module_paths[i]
+    else:
+        x = [x for x in module_paths if x.find(arg) >= 0]
+        assert x, "I could not find path containing: %s" % arg
+        desired_path = x[0]
+    x = os.path.join(cache_path, desired_path)
+    print "cd %s" % parallel.quote(x)
+    #os.chdir(x)
+
+
 def main():
     import os
     import sys
@@ -93,7 +139,6 @@ def main():
     #parser.add_argument(
     #    "--clean_broken", action="store_true",
     #    help="Remove all broken analyses.")
-    
     parser.add_argument(
         "--clear_cache",
         help="Clear out old analyses in the cache.  Argument is the "
@@ -103,24 +148,42 @@ def main():
         "--dry_run", action="store_true",
         help="Used for --clear_acche.  Just show the directories to clear "
         "rather than actually clearing them.")
-    
+    parser.add_argument(
+        "--ls", action="store_true",
+        help="Show the modules in the BETSY cache, sorted by decreasing "
+        "modification time.")
+    parser.add_argument(
+        "--cd",
+        help="Show a current working directory to a module in the BETSY "
+        "cache.  If the argument is a number (e.g. --goto <num>), will set "
+        "the directory to the <num>th most recently created module.  "
+        "If the argument is a string, will set the directory to the most "
+        "recently created module whose directory name contains that string."
+        )
 
     args = parser.parse_args()
     args.clean_broken = False
-
-    bytes_to_clear = None
-    if args.clear_cache:
-        bytes_to_clear = parse_clear_cache(args.clear_cache)
-        #print "Clearing %d bytes" % bytes_to_clear
-    
 
     output_path = config.CACHE_PATH
     if not os.path.exists(output_path):
         return
     output_path = os.path.realpath(output_path)
 
+    assert not (args.ls and args.cd)
+    if args.ls:
+        list_directory(output_path)
+        return
+    if args.cd:
+        change_directory(output_path, args.cd)
+        return
+
     print "BETSY cache path: %s" % output_path
     print
+
+    bytes_to_clear = None
+    if args.clear_cache:
+        bytes_to_clear = parse_clear_cache(args.clear_cache)
+        #print "Clearing %d bytes" % bytes_to_clear
 
     # GenericObject with path (full path), size, status, last_accessed.
     path_info = []

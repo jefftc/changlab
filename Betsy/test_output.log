@@ -12,7 +12,7 @@ VCFFolder
   somatic=no
   vartype=all
   vcf_recalibrated=no
-Made a network with 102 nodes.
+Made a network with 121 nodes.
 Writing network in json format: test01.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -137,14 +137,20 @@ Generating a network that produces a:
 HTSeqCountSummary
   adapters_trimmed=no
   aligner=star
-Made a network with 57 nodes.
+Made a network with 42 nodes.
 Writing network in json format: test08.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
 Found 2 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
-Missing --mattr: trim_adapters_trimmomatic requires attribute "adapters_fasta".
+Pruning redundant pipelines.
+No redundant pipelines found.  2 final pipelines.
+Making sure all input files provided.
+No file given: FastqFolder.
+No file given: SampleGroupFile.
+No file given: STARReferenceGenome.
+No file given: GTFGeneModel.
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
@@ -165,6 +171,7 @@ BamFolder
   adapters_trimmed=no
   aligner=bwa_mem
   base_quality_recalibrated=yes
+  duplicates_filtered=no
   duplicates_marked=yes
   has_md_tags=no
   has_read_groups=yes
@@ -174,7 +181,7 @@ BamFolder
   mouse_reads_subtracted=no
   sorted=coordinate
   split_n_trim=no
-Made a network with 81 nodes.
+Made a network with 98 nodes.
 Writing network in json format: test10.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -188,6 +195,7 @@ Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 DepthOfCoverage
+  duplicates_filtered=no
 Made a network with 74 nodes.
 Writing network in json format: test11.txt.
 Assigning --input's to nodes in the network.
@@ -214,7 +222,7 @@ VCFFolder
   somatic=yes
   vartype=snp
   vcf_recalibrated=no
-Made a network with 84 nodes.
+Made a network with 101 nodes.
 Writing network in json format: test12.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -247,15 +255,18 @@ Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 SimpleVariantMatrix
-  annotated=yes
+  annotated_with_annovar=yes
+  annotated_with_snpeff=no
+  caller_suite=cancer_with_rna
   filtered_calls=yes
-  filtered_variants=no
-  vartype=snp
+  filtered_vars=no
   with_cancer_genes=yes
+  with_cosmic_variants=no
   with_coverage=yes
   with_gxp=yes
+  with_linked_variants=no
   with_rna_coverage=yes
-Made a network with 298 nodes.
+Made a network with 356 nodes.
 Writing network in json format: test14.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -264,20 +275,23 @@ Found 8 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Missing --mattr: add_cancer_genes_to_simplevariantmatrix requires attribute "cancer_genes_file".
 Missing --mattr: filter_simplevariantfile requires attribute "wgs_or_wes".
-Missing --mattr: annotate_simplevariantmatrix requires attribute "annovar_buildver".
+Missing --mattr: annotate_simplevariantmatrix_with_annovar requires attribute "annovar_buildver".
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 SimpleVariantMatrix
-  annotated=no
+  annotated_with_annovar=no
+  annotated_with_snpeff=no
+  caller_suite=general
   filtered_calls=no
-  filtered_variants=no
-  vartype=snp
+  filtered_vars=no
   with_cancer_genes=no
+  with_cosmic_variants=no
   with_coverage=no
   with_gxp=no
+  with_linked_variants=no
   with_rna_coverage=no
-Made a network with 111 nodes.
+Made a network with 132 nodes.
 Writing network in json format: test15.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -338,15 +352,18 @@ Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 SimpleVariantMatrix
-  annotated=no
+  annotated_with_annovar=no
+  annotated_with_snpeff=no
+  caller_suite=cancer
   filtered_calls=no
-  filtered_variants=no
-  vartype=snp
+  filtered_vars=no
   with_cancer_genes=no
+  with_cosmic_variants=no
   with_coverage=no
   with_gxp=no
+  with_linked_variants=no
   with_rna_coverage=no
-Made a network with 160 nodes.
+Made a network with 143 nodes.
 Writing network in json format: test18.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -362,15 +379,18 @@ Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 SimpleVariantMatrix
-  annotated=yes
+  annotated_with_annovar=yes
+  annotated_with_snpeff=no
+  caller_suite=cancer
   filtered_calls=yes
-  filtered_variants=yes
-  vartype=snp
+  filtered_vars=yes
   with_cancer_genes=yes
+  with_cosmic_variants=no
   with_coverage=yes
   with_gxp=no
+  with_linked_variants=no
   with_rna_coverage=no
-Made a network with 207 nodes.
+Made a network with 241 nodes.
 Writing network in json format: test19.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -380,8 +400,8 @@ Making sure all required attributes (--mattr) are provided.
 Missing --mattr: call_variants_muse requires attribute "wgs_or_wes".
 Missing --mattr: call_variants_mutect2 requires attribute "mutect_cosmic_vcf".
 Missing --mattr: call_variants_mutect requires attribute "mutect_cosmic_vcf".
-Missing --mattr: annotate_simplevariantmatrix requires attribute "annovar_buildver".
 Missing --mattr: call_variants_muse requires attribute "muse_dbsnp_vcf".
+Missing --mattr: annotate_simplevariantmatrix_with_annovar requires attribute "annovar_buildver".
 Missing --mattr: add_cancer_genes_to_simplevariantmatrix requires attribute "cancer_genes_file".
 Missing --mattr: filter_simplevariantfile requires attribute "wgs_or_wes".
 Missing --mattr: call_variants_mutect2 requires attribute "mutect_dbsnp_vcf".
@@ -390,42 +410,41 @@ Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 SimpleVariantMatrix
-  annotated=yes
+  annotated_with_annovar=yes
+  annotated_with_snpeff=yes
+  caller_suite=cancer_with_rna
   filtered_calls=yes
-  filtered_variants=yes
-  vartype=snp
+  filtered_vars=yes
   with_cancer_genes=yes
+  with_cosmic_variants=no
   with_coverage=yes
   with_gxp=yes
+  with_linked_variants=no
   with_rna_coverage=yes
-Made a network with 304 nodes.
+Made a network with 382 nodes.
 Writing network in json format: test20.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
 Constructing pipelines that use --input data types.
 Found 96 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
-Pruning redundant pipelines.
-No redundant pipelines found.  96 final pipelines.
-Making sure all input files provided.
-No file given: BamFolder.
-No file given: BamFolder.
-No file given: ReferenceGenome.
-No file given: NormalCancerFile.
-No file given: UnprocessedSignalFile.
+Missing --mattr: call_variants_radia_with_rna requires attribute "snp_eff_genome".
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 SimpleVariantMatrix
-  annotated=yes
+  annotated_with_annovar=yes
+  annotated_with_snpeff=no
+  caller_suite=cancer
   filtered_calls=yes
-  filtered_variants=no
-  vartype=indel
+  filtered_vars=no
   with_cancer_genes=yes
+  with_cosmic_variants=no
   with_coverage=yes
   with_gxp=yes
+  with_linked_variants=no
   with_rna_coverage=no
-Made a network with 229 nodes.
+Made a network with 340 nodes.
 Writing network in json format: test21.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
@@ -433,14 +452,17 @@ Constructing pipelines that use --input data types.
 Found 24 possible pipelines.
 Making sure all required attributes (--mattr) are provided.
 Missing --mattr: call_variants_mutect2 requires attribute "mutect_cosmic_vcf".
+Missing --mattr: call_variants_mutect requires attribute "mutect_cosmic_vcf".
+Missing --mattr: call_variants_muse requires attribute "muse_dbsnp_vcf".
 Missing --mattr: call_variants_mutect2 requires attribute "mutect_dbsnp_vcf".
+Missing --mattr: call_variants_mutect requires attribute "mutect_dbsnp_vcf".
 Starting rule engine.
 Checking parameters.
 Generating a network that produces a:
 CompleteRNASeqAnalysis
   adapters_trimmed=no
   aligner=star
-Made a network with 120 nodes.
+Made a network with 102 nodes.
 Writing network in json format: test22.txt.
 Assigning --input's to nodes in the network.
 All --input data found in network.
