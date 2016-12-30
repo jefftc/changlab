@@ -443,8 +443,12 @@ def cor(X, Y=None, byrow=1, safe=0, abs=0):
         X, None, _fn(cor_list, Y, safe=safe, abs=abs),
         _fn(cor_matrix, byrow=byrow, safe=safe, abs=abs))
 
-def order_list(X, decreasing=0):
+def order_list(X, decreasing=0, natural=False):
+    from genomicode import sortlib
     I = range(len(X))
+    if natural:
+        # Only works for strings.
+        X = [sortlib.hash_natural(x) for x in X]
     schwartz = [(x, i) for (x, i) in zip(X, I)]
     schwartz.sort()
     I = [x[-1] for x in schwartz]
@@ -452,17 +456,18 @@ def order_list(X, decreasing=0):
         I.reverse()
     return I
 
-def order_matrix(X, byrow=1, decreasing=0):
+def order_matrix(X, byrow=1, decreasing=0, natural=False):
     if not byrow:
         X = transpose(X)
-    X_order = [order_list(x) for x in X]
+    X_order = [
+        order_list(x, decreasing=decreasing, natural=natural) for x in X]
     if not byrow:
         X_order = transpose(X_order)
     return X_order
 
-def order(X, byrow=1, decreasing=0):
+def order(X, byrow=1, decreasing=0, natural=False):
     return _dispatch(
-        X, None, _fn(order_list, decreasing=decreasing),
+        X, None, _fn(order_list, decreasing=decreasing, natural=natural),
         _fn(order_matrix, byrow=byrow, decreasing=decreasing))
 
 def rank_list(X):
