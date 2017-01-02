@@ -40,6 +40,8 @@ class Module(AbstractModule):
             coord2info[(d.Chrom, pos)] = d
 
         # Align the linked annotations to the matrix.
+        MAX_SCORE = 1000
+        min_p = 10**-(MAX_SCORE/10)
         linked_headers = ["Perc Linked", "Score"]
         annotations = []
         for (chrom, pos) in zip(CHROM, POS):
@@ -48,7 +50,9 @@ class Module(AbstractModule):
                 annotations.append(x)
                 continue
             d = coord2info[(chrom, pos)]
-            score = -10*math.log(float(d.p), 10)
+            score = MAX_SCORE
+            if float(d.p) >= min_p:
+                score = -10*math.log(float(d.p), 10)
             x = d.Perc_Linked, score
             assert len(x) == len(linked_headers)
             annotations.append(x)
