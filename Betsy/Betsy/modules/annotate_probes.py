@@ -33,7 +33,7 @@ class Module(AbstractModule):
         #assert all_platforms, "Unknown platform: %s" % in_data.identifier
         #header, platform_name = all_platforms[0]
         scores = arrayplatformlib.score_matrix(M)
-        scores = [x for x in scores if x.max_score >= 0.60]
+        scores = [x for x in scores if x.max_score >= 0.75]
         assert scores, "I could not identify any platforms."
         
         # Find all the platforms not in the matrix.
@@ -44,6 +44,7 @@ class Module(AbstractModule):
         missing = [x for x in CATEGORIES if x not in categories]
 
         score = scores[0]
+        platform = platforms[0]
         to_add = []  # list of platform names
         for category in missing:
             x = arrayplatformlib.PLATFORMS

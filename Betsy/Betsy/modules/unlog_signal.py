@@ -20,7 +20,8 @@ class Module(AbstractModule):
 
         # If all the values should be integers, convert them back to
         # ints.
-        EPS = 1E-5
+        EPS = 1E-4
+        # 628494.000012.  1E-5 is too strict.
         is_int = True
         for i in range(len(X)):
             for j in range(len(X[i])):
