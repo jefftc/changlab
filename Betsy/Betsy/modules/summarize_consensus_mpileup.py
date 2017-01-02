@@ -62,6 +62,10 @@ class Module(AbstractModule):
         #   $i > $j"
         samtools = filelib.which_assert(config.samtools)
 
+        # Get an error if the BAM files are not indexed.
+        # [W::bam_hdr_read] EOF marker is absent. The input is probably
+        #   truncated.
+
         #if vartype == "consensus":
         #    args = [
         #        "-R",        # Ignore read group tags.

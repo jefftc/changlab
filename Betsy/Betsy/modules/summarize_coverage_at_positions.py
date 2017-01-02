@@ -86,7 +86,6 @@ class Module(AbstractModule):
                 all_coord[coord] = 1
         all_coord = sorted(all_coord)
 
-
         handle = open(outfile, 'w')
         header = ["Chrom", "Pos"] + all_samples
         print >>handle, "\t".join(header)
@@ -108,7 +107,7 @@ class Module(AbstractModule):
             assert len(x) == len(header)
             print >>handle, "\t".join(map(str, x))
         handle.close()
-            
+
         return metadata
 
         
