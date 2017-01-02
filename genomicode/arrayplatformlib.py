@@ -626,21 +626,21 @@ PLATFORMS = [
         "Ensembl_mouse", "ensembl_gene_id", "mmusculus_gene_ensembl",
         PROBE_ID, 29),
     Platform(
-        "UCSC_human_hg19_kg7", None, "hsapiens_gene_ensembl", GENE_ID, 30),
+        "UCSC_human_hg19_kg7", None, "hsapiens_gene_ensembl", PROBE_ID, 30),
     Platform(
-        "UCSC_human_hg19_kg6", None, "hsapiens_gene_ensembl", GENE_ID, 31),
+        "UCSC_human_hg19_kg6", None, "hsapiens_gene_ensembl", PROBE_ID, 31),
     Platform(
-        "UCSC_human_hg19_kg5", None, "hsapiens_gene_ensembl", GENE_ID, 32),
+        "UCSC_human_hg19_kg5", None, "hsapiens_gene_ensembl", PROBE_ID, 32),
     Platform(
-        "UCSC_human_hg38_kg8", None, "hsapiens_gene_ensembl", GENE_ID, 33),
+        "UCSC_human_hg38_kg8", None, "hsapiens_gene_ensembl", PROBE_ID, 33),
     Platform(
-        "Agilent_Human1A", None, "hsapiens_gene_ensembl", GENE_ID, 34),
+        "Agilent_Human1A", None, "hsapiens_gene_ensembl", PROBE_ID, 34),
     Platform(
-        "HumanHT_12_control", None, "hsapiens_gene_ensembl", GENE_ID, 35),
+        "HumanHT_12_control", None, "hsapiens_gene_ensembl", PROBE_ID, 35),
     Platform(
-        "MouseRef_8_control", None, "hsapiens_gene_ensembl", GENE_ID, 36),
+        "MouseRef_8_control", None, "hsapiens_gene_ensembl", PROBE_ID, 36),
     Platform(
-        "UCSC_human_hg38_kg8", None, "hsapiens_gene_ensembl", GENE_ID, 37),
+        "UCSC_human_hg38_kg8", None, "hsapiens_gene_ensembl", PROBE_ID, 37),
     Platform(
         "RefSeq_protein_mouse", "refseq_peptide", "mmusculus_gene_ensembl",
         PROBE_ID, 38),
@@ -678,7 +678,7 @@ PLATFORMS = [
         "RefSeq_predicted_ncRNA_human", "refseq_ncrna_predicted",
         "hsapiens_gene_ensembl", PROBE_ID, 49),
     Platform(
-        "UCSC_mouse_mm10_kg7", None, "mmusculus_gene_ensembl", GENE_ID, 50),
+        "UCSC_mouse_mm10_kg7", None, "mmusculus_gene_ensembl", PROBE_ID, 50),
     Platform(
         "Entrez_Description_human", None, "hsapiens_gene_ensembl",
         DESCRIPTION, 51),

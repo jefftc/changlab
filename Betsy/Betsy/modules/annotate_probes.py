@@ -33,38 +33,47 @@ class Module(AbstractModule):
         #assert all_platforms, "Unknown platform: %s" % in_data.identifier
         #header, platform_name = all_platforms[0]
         scores = arrayplatformlib.score_matrix(M)
-        assert scores, "I could not identify platform."
-        score = scores[0]
-        assert score.max_score >= 0.75, "I could not identify platform."
-        platform = arrayplatformlib.find_platform_by_name(score.platform_name)
+        scores = [x for x in scores if x.max_score >= 0.60]
+        assert scores, "I could not identify any platforms."
         
+        # Find all the platforms not in the matrix.
+        platforms = [
+            arrayplatformlib.find_platform_by_name(x.platform_name) for
+            x in scores]
+        categories = [x.category for x in platforms]
+        missing = [x for x in CATEGORIES if x not in categories]
+
+        score = scores[0]
         to_add = []  # list of platform names
-        for category in CATEGORIES:
+        for category in missing:
             x = arrayplatformlib.PLATFORMS
             x = [x for x in x if x.category == category]
             x = [x for x in x if x.bm_organism == platform.bm_organism]
             x = [x for x in x if x.name != score.platform_name]
-            # Take the first one, of any.
+            # Take the first one, if any.
             if x:
                 to_add.append(x[0].name)
-        assert to_add, "No platforms to add"
 
-        annotate = mlib.get_config("annotate_matrix", which_assert_file=True)
-        sq = parallel.quote
-        cmd = [
-            "python",
-            sq(annotate),
-            "--no_na", 
-            "--header", sq(score.header),
-            ]
-        for x in to_add:
-            x = ["--platform", sq(x)]
-            cmd.extend(x)
-        cmd.append(in_data.identifier)
-        cmd = " ".join(cmd)
-        data = parallel.sshell(cmd)
-        metadata["commands"] = [cmd]
-        assert data.find("Traceback") < 0, data
+        if to_add:
+            annotate = mlib.get_config(
+                "annotate_matrix", which_assert_file=True)
+            sq = parallel.quote
+            cmd = [
+                "python",
+                sq(annotate),
+                "--no_na", 
+                "--header", sq(score.header),
+                ]
+            for x in to_add:
+                x = ["--platform", sq(x)]
+                cmd.extend(x)
+            cmd.append(in_data.identifier)
+            cmd = " ".join(cmd)
+            data = parallel.sshell(cmd)
+            metadata["commands"] = [cmd]
+            assert data.find("Traceback") < 0, data
+        else:
+            data = open(in_data.identifier).read()
 
         # Clean up the headers.
         platform2pretty = {
