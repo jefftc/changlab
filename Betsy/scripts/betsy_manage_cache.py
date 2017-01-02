@@ -105,7 +105,7 @@ def change_directory(cache_path, arg):
         assert i > 0
         assert i < len(module_paths), "There are only %d modules" % \
                len(module_paths)
-        desired_path = module_paths[i]
+        desired_path = module_paths[i-1]
     else:
         x = [x for x in module_paths if x.find(arg) >= 0]
         assert x, "I could not find path containing: %s" % arg

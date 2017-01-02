@@ -62,6 +62,13 @@ def merge_vcf_files(vcf_filenames, out_filename, num_cores, tmp_path):
         open(out_filename, 'w')
         return
 
+    # 1.  Copy VCF files to temporary directory.             tmp_filename
+    # 2.  Fix VCF files (e.g. NextGENe, JointSNVMix broken)
+    # 3.  Sort the VCF files (needed for tabix)
+    # 4.  Compress  (bgzip)
+    # 5.  Index     (tabix)
+    # 6.  Merge
+
     jobs = []
     for in_filename in vcf_filenames:
         path, root, ext = mlib.splitpath(in_filename)
@@ -99,6 +106,9 @@ def merge_vcf_files(vcf_filenames, out_filename, num_cores, tmp_path):
         fix_nextgene_vcf(j.tmp_filename)
         # JointSNVMix creates broken VCF files.  Fix them.
         fix_jointsnvmix_vcf(j.tmp_filename)
+
+    for j in jobs:
+        sort_vcf_file(j.tmp_filename)
 
     ## # Since we are merging the files, we need to make sure that
     ## # each file has a unique name.  If the names aren't unique,
@@ -267,3 +277,33 @@ def make_file_smaller(filename, num_lines):
         if len(lines) >= num_lines:
             break
     open(filename, 'w').writelines(lines)
+
+
+def sort_vcf_file(filename):
+    from genomicode import vcflib
+    from genomicode import jmath
+    from genomicode import AnnotationMatrix
+    
+    vcf = vcflib.read(filename)
+    CHROM = vcf.matrix["#CHROM"]
+    POS = vcf.matrix["POS"]
+    POS = [int(x) for x in POS]
+
+    # Check if POS is sorted.  If it's already sorted, then return.
+    is_sorted = True
+    for i in range(len(CHROM)-1):
+        c1, p1 = CHROM[i], POS[i]
+        c2, p2 = CHROM[i+1], POS[i+1]
+        if c1 != c2:
+            continue
+        if p2 < p1:
+            is_sorted = False
+            break
+    if is_sorted:
+        return
+
+    # Sort by CHROM and POS.
+    S = ["%s:%d" % (CHROM[i], POS[i]) for i in range(len(CHROM))]
+    O = jmath.order_list(S, natural=True)
+    vcf.matrix = AnnotationMatrix.rowslice(vcf.matrix, O)
+    vcflib.write(filename, vcf)
