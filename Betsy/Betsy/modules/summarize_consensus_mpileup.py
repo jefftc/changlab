@@ -42,7 +42,10 @@ class Module(AbstractModule):
             sample, ext = os.path.splitext(f)
             err_filename = os.path.join(out_path, "%s.log" % sample)
             out_filename = os.path.join(out_path, "%s.pileup" % sample)
-            x = in_filename, err_filename, out_filename
+            x = filelib.GenericObject(
+                in_filename=in_filename,
+                err_filename=err_filename,
+                out_filename=out_filename)
             jobs.append(x)
 
         ## Get possible positions file.
@@ -86,9 +89,7 @@ class Module(AbstractModule):
 
         sq = parallel.quote
         commands = []
-        for x in jobs:
-            in_filename, err_filename, out_filename = x
-            
+        for j in jobs:
             x = [
                 sq(samtools),
                 "mpileup",
@@ -97,9 +98,9 @@ class Module(AbstractModule):
             if positions_filename:
                 x.extend(["-l", positions_filename])
             x.extend(args)
-            x.append(sq(in_filename))
+            x.append(sq(j.in_filename))
             x = " ".join(map(str, x))
-            x = "%s 2> %s 1> %s" % (x, err_filename, out_filename)
+            x = "%s 2> %s 1> %s" % (x, j.err_filename, j.out_filename)
             commands.append(x)
 
         #for x in commands:
@@ -107,12 +108,27 @@ class Module(AbstractModule):
         parallel.pshell(commands, max_procs=num_cores)
         metadata["commands"] = commands
                 
-
         # File may be empty if there are no reads.
-        x = [x[-1] for x in jobs]
+        x = [x.out_filename for x in jobs]
         filelib.assert_exists_many(x)
+
+        # Make sure there's no errors in the log files.
+        for j in jobs:
+            check_log_file(j.err_filename)
+        
         return metadata
         
 
     def name_outfile(self, antecedents, user_options):
         return "consensus.pileup"
+
+
+def check_log_file(filename):
+    # Should not see this message:
+    # [W::bam_hdr_read] EOF marker is absent. The input is probably truncated.
+    #
+    # Means that BAM file is not indexed, or messed up in some way.
+    x = open(filename).readlines()
+    x = [x for x in x
+         if x.startswith("[W::bam_hdr_read] EOF marker is absent.")]
+    assert not x, "Error in %s:\n%s" % (filename, x)
