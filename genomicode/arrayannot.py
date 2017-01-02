@@ -93,7 +93,7 @@ def _convert_gene_ids_biomart(gene_ids, in_platform, out_platform, no_na):
         
         x = _convert_gene_ids_biomart_h(
             batch, in_platform, out_platform, no_na)
-        assert x is not None, "Cannot convert: %s %s" % (
+        assert x is not None, "Cannot convert: %s -> %s" % (
             in_platform, out_platform)
         in2out.update(x)
     return in2out
