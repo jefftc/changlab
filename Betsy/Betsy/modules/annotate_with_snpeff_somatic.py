@@ -61,6 +61,9 @@ class Module(AbstractModule):
         # First, filter each of the VCF files.
         commands = []
         for j in jobs:
+            # For debugging.  If this file exists, don't filter it again.
+            if os.path.exists(j.filtered_filename):
+                continue
             args = j.in_filename, j.filtered_filename, wgs_or_wes
             x = vcflib.filter_vcf_file, args, {}
             commands.append(x)
@@ -70,7 +73,7 @@ class Module(AbstractModule):
         for j in jobs:
             # Will generate this if there are cancer samples.
             make_cancer_samples_file(
-                j.in_filename, nc_match, j.samples_file)
+                j.filtered_filename, nc_match, j.samples_file)
 
         # Make a list of commands.
         commands = []
@@ -146,6 +149,7 @@ def make_cancer_samples_file(vcf_file, nc_match, outfile):
     # Two column tab-delimited text.  No headers.
     # <germline>  <tumor>
     from genomicode import vcflib
+    from genomicode import hashlib
     from genomicode import jmath
 
     # vcf samples (joined with bcftools).
@@ -161,26 +165,58 @@ def make_cancer_samples_file(vcf_file, nc_match, outfile):
     # Get the samples from the VCF file.
     samples = vcf.samples
 
+    # HACK: Fix some problems with old files.
+    #samples = [x.replace("Cap475-5983-19", "PIM001_G") for x in samples]
+
     # HACK: Radia has calls from RNA.  Ignore them.
     # <tumor_sample>_RNA
     rna = {}.fromkeys(["%s_RNA" % x for x in tumor_samples])
     samples = [x for x in samples if x not in rna]
+
+    # Samples may be hashed, e.g.
+    # 196B-MG -> X196B_MG
+    # Need to compare against hashed samples.
+    germline_samples_h = [hashlib.hash_var(x) for x in germline_samples]
+    tumor_samples_h = [hashlib.hash_var(x) for x in tumor_samples]
+    # Make sure hashing does not make duplicate tumor samples.
+    # Germline may be duplicated.
+    #assert not _dups(germline_samples)
+    assert not _dups(tumor_samples)
+    #assert not _dups(germline_samples_h)
+    assert not _dups(tumor_samples_h)
     
     # Clean up samples.
     clean = []   # list of tuples ("G" or "T", sample_name)
     for sample in samples:
         if sample in germline_samples:
             x = "G", sample
+        elif sample in germline_samples_h:
+            # Don't unhash it.  Otherwise, snpeff will be confused.
+            #i = germline_samples_h[sample]
+            #x = "G", germline_samples[i]
+            x = "G", sample
         elif sample in tumor_samples:
+            x = "T", sample
+        elif sample in tumor_samples_h:
+            #i = tumor_samples_h[sample]
+            #x = "T", tumor_samples[i]
             x = "T", sample
         else:
             # <num>:<germline sample name>
             x = sample.split(":", 1)
-            assert len(x) == 2, "Unknown sample name: %s" % sample
-            assert jmath.is_int(x[0]), "Unknown sample name: %s" % sample
+            assert len(x) == 2, "Unknown sample name (%s) in: %s" % (
+                sample, vcf_file)
+            assert jmath.is_int(x[0]), "Unknown sample name (%s) in: %s" % (
+                sample, vcf_file)
             s = x[1]
-            assert s in germline_samples, "Unknown sample name: %s" % sample
-            x = "G", s
+            if s in germline_samples:
+                x = "G", s
+            elif s in germline_samples_h:
+                #i = germline_samples_h[s]
+                #x = "G", germline_samples[i]
+                x = "G", s
+            else:
+                raise AssertionError, "Unknown sample name: %s" % sample
         clean.append(x)
     samples = clean
 
@@ -243,3 +279,14 @@ def make_snpeff_command(in_file, genome, out_file, log_file, is_cancer=False,
     cmd = " ".join(cmd)
     cmd = "%s 1> %s 2> %s" % (cmd, sq(out_file), sq(log_file))
     return cmd
+
+
+def _dups(L):
+    seen = {}
+    dups = []
+    for x in L:
+        if x in seen:
+            dups.append(x)
+        seen[x] = 1
+    return dups
+
