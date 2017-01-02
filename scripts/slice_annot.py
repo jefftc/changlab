@@ -32,6 +32,7 @@
 # set_value_if_empty
 # set_value_if_not_empty
 # set_value_if_other_annot_equals
+# set_value_if_other_annot_not_empty
 # copy_value_if_empty
 # copy_value_if_empty_header
 # copy_value_if_empty_same_header
@@ -794,8 +795,8 @@ def set_value_if_other_annot_equals(MATRIX, args):
         assert len(x) == 4, "format should be: " + \
                "<this_index 1-based>,<this_value>,<other_index>,<other_value>"
         this_h, this_value, other_h, other_value = x
-        this_index = MATRIX.normalize_header_i(this_h)
-        other_index = MATRIX.normalize_header_i(other_h)
+        this_index = MATRIX.normalize_header_i(this_h, index_base1=True)
+        other_index = MATRIX.normalize_header_i(other_h, index_base1=True)
         assert this_index is not None, "Could not find header: %s" % this_h
         assert other_index is not None, "Could not find header: %s" % other_h
         x = this_index, this_value, other_index, other_value
@@ -814,6 +815,46 @@ def set_value_if_other_annot_equals(MATRIX, args):
         for i in range(len(this_annots)):
             if other_annots[i] == other_value:
                 this_annots[i] = this_value
+    return MATRIX
+
+
+def set_value_if_other_annot_not_empty(MATRIX, args):
+    # Format: <this_index 1-based>,<this_value>,<other_indexes>
+    if not args:
+        return MATRIX
+    from genomicode import AnnotationMatrix
+
+    # list of (this index 0-based, this value, other_indexes 0-based)
+    jobs = []
+    for arg in args:
+        x = arg.split(";")
+        if len(x) != 3:
+            x = arg.split(",")
+        assert len(x) == 3, "format should be: " + \
+               "<this_index 1-based>,<this_value>,<other_indexes>"
+        this_h, this_value, other_i = x
+        this_index = MATRIX.normalize_header_i(this_h, index_base1=True)
+        other_indexes = parse_indexes(MATRIX, other_i)
+        assert this_index is not None, "Could not find header: %s" % this_h
+        assert other_indexes, "Could not find indexes: %s" % other_i
+        x = this_index, this_value, other_indexes
+        jobs.append(x)
+
+    MATRIX = MATRIX.copy()
+    for x in jobs:
+        this_index, this_value, other_indexes = x
+
+        # Change the annotations in place.
+        this_h = MATRIX.headers_h[this_index]
+        this_annots = MATRIX.header2annots[this_h]
+
+        for other_index in other_indexes:
+            other_h = MATRIX.headers_h[other_index]
+            other_annots = MATRIX.header2annots[other_h]
+
+            for i in range(len(this_annots)):
+                if other_annots[i].strip():
+                    this_annots[i] = this_value
     return MATRIX
 
 
@@ -2758,6 +2799,12 @@ def main():
         "<this_index 1-based>,<this_value>,<other_index>,<other_value>.  "
         "(MULTI)")
     group.add_argument(
+        "--set_value_if_other_annot_not_empty", default=[], action="append",
+        help="If the annotation of another column is not empty, "
+        "then set this annotation with this value.  Format: "
+        "<this_index 1-based>,<this_value>,<other_index(es)>.  "
+        "(MULTI)")
+    group.add_argument(
         "--copy_value_if_empty", default=[], action="append",
         help="If the dest column is empty, copy the value from the src "
         "columns.  "
@@ -3063,6 +3110,8 @@ def main():
     MATRIX = set_value_if_not_empty(MATRIX, args.set_value_if_not_empty)
     MATRIX = set_value_if_other_annot_equals(
         MATRIX, args.set_value_if_other_annot_equals)
+    MATRIX = set_value_if_other_annot_not_empty(
+        MATRIX, args.set_value_if_other_annot_not_empty)
     MATRIX = copy_value_if_empty(MATRIX, args.copy_value_if_empty)
     MATRIX = copy_value_if_empty_header(
         MATRIX, args.copy_value_if_empty_header)
