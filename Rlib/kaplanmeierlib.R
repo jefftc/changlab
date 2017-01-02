@@ -10,6 +10,13 @@
 #
 # group.by.value
 
+
+# Likely to get warning if only 1 member per group.
+# Maybe should set a specific error message in this case.
+# Warning message:
+# In fitter(X, Y, strats, offset, init, control, weights = weights,  :
+#   Loglik converged before variable  1 ; beta may be infinite. 
+
 # Estimate the survival time based on the closest survival.
 .est.survival <- function(surv.table, survival) {
   # surv.table
