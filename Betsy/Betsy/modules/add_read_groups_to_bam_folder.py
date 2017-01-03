@@ -17,15 +17,20 @@ class Module(AbstractModule):
         bam_filenames = module_utils.find_bam_files(in_data.identifier)
         assert bam_filenames, "No .bam files."
         filelib.safe_mkdir(out_path)
+        metadata = {}
         
-        jobs = []  # list of (in_filename, sample, log_filename, out_filename)
+        jobs = []
         for in_filename in bam_filenames:
             p, f = os.path.split(in_filename)
             s, ext = os.path.splitext(f)
             sample = hashlib.hash_var(s)
             log_filename = os.path.join(out_path, "%s.log" % s)
             out_filename = os.path.join(out_path, f)
-            x = in_filename, sample, log_filename, out_filename
+            x = filelib.GenericObject(
+                in_filename=in_filename,
+                sample=sample,
+                log_filename=log_filename,
+                out_filename=out_filename)
             jobs.append(x)
         
         gid = "group1"
@@ -43,42 +48,76 @@ class Module(AbstractModule):
         # Make a list of commands.
         sq = parallel.quote
         commands = []
-        for x in jobs:
-            in_filename, sample, log_filename, out_filename = x
+        for j in jobs:
             x = [
                 "java", "-Xmx5g",
                 "-jar", sq(picard_jar),
                 "AddOrReplaceReadGroups", 
-                "I=%s" % sq(in_filename),
-                "O=%s" % sq(out_filename),
+                "I=%s" % sq(j.in_filename),
+                "O=%s" % sq(j.out_filename),
                 "ID=%s" % gid,
                 "LB=%s" % library,
                 "PU=%s" % platform_unit,
-                "SM=%s" % sample,
+                "SM=%s" % j.sample,
                 "PL=%s" % platform,
                 #"CREATE_INDEX=true",
                 "VALIDATION_STRINGENCY=LENIENT",
                 ]
             x = " ".join(x)
-            x = "%s >& %s" % (x, sq(log_filename))
+            x = "%s >& %s" % (x, sq(j.log_filename))
             commands.append(x)
-
-        #for x in commands[:5]:
-        #    print x
-        #import sys; sys.exit(0)
             
         parallel.pshell(commands, max_procs=num_cores)
+        metadata["commands"] = commands
+        metadata["num_cores"] = num_cores
 
         # Make sure the analysis completed successfully.
-        out_filenames = [x[-1] for x in jobs]
+        # Make sure outfiles exist.
+        out_filenames = [j.out_filename for x in jobs]
         filelib.assert_exists_nz_many(out_filenames)
 
-    
+        # Check the log files to make sure there are no error.
+        for j in jobs:
+            check_log_file(j.log_filename)
+
+        return metadata
+
+
     def name_outfile(self, antecedents, user_options):
-        #from Betsy import module_utils
-        #original_file = module_utils.get_inputid(antecedents.identifier)
-        #filename = 'bamFiles_sorted' + original_file
-        #return filename
         return "bam"
 
 
+def check_log_file(filename):
+    from genomicode import filelib
+    # Log file format:
+    # [Sat Dec 31 19:29:27 CST 2016] picard.sam.AddOrReplaceReadGroups INPUT=
+    # [Sat Dec 31 19:29:27 CST 2016] Executing as jchang@velocitron.uth.tmc.e
+    # INFO    2016-12-31 19:29:27     AddOrReplaceReadGroups  Created read gr
+    # INFO    2016-12-31 19:29:42     AddOrReplaceReadGroups  Processed     1
+    # INFO    2016-12-31 19:29:58     AddOrReplaceReadGroups  Processed     2
+    # [...]
+    # [Sat Dec 31 19:48:14 CST 2016] picard.sam.AddOrReplaceReadGroups done. 
+    # Runtime.totalMemory()=1609564160
+    #
+    # Sometimes these lines are interspersed.  Probably OK not to flag.
+    # Ignoring SAM validation error: ERROR: Read name HWI-ST1120:331:C6VW5ACX
+    #
+    # ERROR: Sometimes see exceptions.
+    # Exception in thread "main" java.lang.RuntimeException: BGZF file has in
+    #         at htsjdk.samtools.util.BlockGunzipper.unzipBlock(BlockGunzippe
+    # [...]
+
+    # The log file should not be empty.
+    filelib.assert_exists_nz(filename)
+
+    lines = open(filename).readlines()
+    # Make sure there's no exception.
+    i_exception = None
+    for i in range(len(lines)):
+        if lines[i].startswith("Exception in thread "):
+            i_exception = i
+            break
+    if i_exception is None:
+        return
+    x = "".join(lines[i:]).strip()
+    raise AssertionError, "Exception in Picard output:\n%s" % x

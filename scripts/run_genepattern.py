@@ -44,7 +44,7 @@ def main():
     for (key, value) in parameters.iteritems():
         params.append("%s='%s'" % (key, value))
     params_str = ", ".join(params)
-    x = "result <- run.analysis(%s)" % params_str=
+    x = "result <- run.analysis(%s)" % params_str
     R(x)
 
     # Download the files to outpath.
