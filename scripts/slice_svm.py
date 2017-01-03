@@ -1,20 +1,41 @@
 #!/usr/bin/env python
 
 # Functions:
+# annotate_linked_variants
+# 
+# filter_min_total_reads
+# 
 # filter_min_callers
+# filter_linked_perc
+# exonic_only
 
 
-def filter_min_callers(MATRIX, args):
+def filter_min_total_reads(MATRIX, args):
+    if args is None:
+        return MATRIX
+    raise NotImplementedError
+
+
+def filter_min_callers(MATRIX, args, germline):
     if args is None:
         return MATRIX
     from genomicode import AnnotationMatrix
-    
+
     num_callers = args
     assert num_callers >= 1 and num_callers < 20
 
     I_nc = [i for (i, x) in enumerate(MATRIX.headers)
          if x.startswith("Num Callers")]
     headers_nc = [MATRIX.headers_h[i] for i in I_nc]
+    for i, h in enumerate(headers_nc):
+        is_germ = False
+        for g in germline:
+            if h.endswith(g):
+                is_germ = True
+                break
+        if is_germ:
+            headers_nc[i] = None
+    headers_nc = [x for x in headers_nc if x]
 
     I_remove = []
     for i in range(MATRIX.num_annots()):
@@ -36,10 +57,26 @@ def filter_min_callers(MATRIX, args):
     return filtered_matrix
 
 
-def filter_min_total_reads(MATRIX, args):
+def filter_linked_perc(MATRIX, args):
     if args is None:
         return MATRIX
-    raise NotImplementedError
+    from genomicode import AnnotationMatrix
+    
+    filter_perc = float(args)
+    assert filter_perc >= 0 and filter_perc <= 100
+
+    h = "Linkage______Perc Linked"
+    perc_linked = MATRIX[h]
+
+    I = []
+    for i, perc in enumerate(perc_linked):
+        if perc == "":
+            I.append(i)
+            continue
+        perc = float(perc)
+        if perc <= filter_perc:
+            I.append(i)
+    return AnnotationMatrix.rowslice(MATRIX, I)
 
 
 def exonic_only(MATRIX, args):
@@ -113,19 +150,31 @@ def main():
         description="Perform operations on a SimpleVariantMatrix file.")
     parser.add_argument("filename", nargs=1, help="Annotation file.")
 
-    group = parser.add_argument_group(title="Matrix operations")
+    parser.add_argument(
+        "--ignore_germline", action="append", default=[],
+        help="Ignore these germline samples.  Can use multiple times."
+        "Affects: --filter_min_callers.")
+    
+    group = parser.add_argument_group(title="Filter Calls")
+    group.add_argument(
+        "--filter_min_total_reads", type=int, 
+        help="Discard calls if no samples have at least this many "
+        "callers.")
 
+    group = parser.add_argument_group(title="Filter Variants")
     group.add_argument(
         "--filter_min_callers", type=int, 
         help="Discard variants if no samples have at least this many "
         "callers.")
     group.add_argument(
-        "--filter_min_total_reads", type=int, 
-        help="Discard calls if no samples have at least this many "
-        "callers.")
+        "--filter_linked_perc", type=float, 
+        help="Discard variants if their linkage percent is more than this.  "
+        '(e.g. "50.0" will discard anything with Perc Linked > 50.0).')
     group.add_argument(
         "--exonic_only", action="store_true",
         help="Keep variants only if they are exonic.")
+
+    group = parser.add_argument_group(title="Annotation")
     group.add_argument(
         "--annotate_linked_variants", 
         help="Add a column that shows the linkage score for each variant.  "
@@ -138,10 +187,16 @@ def main():
     # Read the matrix.
     MATRIX = SimpleVariantMatrix.read_as_am(FILENAME)
 
-    MATRIX = filter_min_callers(MATRIX, args.filter_min_callers)
-    MATRIX = filter_min_total_reads(MATRIX, args.filter_min_total_reads)
-    MATRIX = exonic_only(MATRIX, args.exonic_only)
+    # Annotation
     MATRIX = annotate_linked_variants(MATRIX, args.annotate_linked_variants)
+
+    # Filters
+    MATRIX = filter_min_callers(
+        MATRIX, args.filter_min_callers, args.ignore_germline)
+    MATRIX = filter_min_total_reads(MATRIX, args.filter_min_total_reads)
+    MATRIX = filter_linked_perc(MATRIX, args.filter_linked_perc)
+    MATRIX = exonic_only(MATRIX, args.exonic_only)
+
 
     # Write the matrix back out.
     SimpleVariantMatrix.write_from_am(sys.stdout, MATRIX)
