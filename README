@@ -23,17 +23,18 @@ http://changlab.uth.tmc.edu/
 CONTENTS
 ========
 
-README       This file.
-USAGE        Instructions for using BETSY.
-LICENSE      How this code is licensed.
-Betsy/       BETSY expert system for Bioinformatics pipelines.
-  samples/   Example files for BETSY file formats.
-scripts/     Python scripts for use from the command line.
-Rlib/        Library of R code.
-arrayio/     Python library for reading gene expression matrices.
-genomicode/  Miscellaneous Python modules.
-queue/       EXPERIMENTAL.  Not used.
-web2py/      EXPERIMENTAL.  Not used.
+README             This file.
+USAGE              Instructions for using BETSY.
+LICENSE            How this code is licensed.
+Betsy/             BETSY expert system for Bioinformatics pipelines.
+  samples/         Example files for BETSY file formats.
+scripts/           Python scripts for use from the command line.
+Rlib/              Library of R code.
+arrayio/           Python library for reading gene expression matrices.
+genomicode/        Miscellaneous Python modules.
+queue/             EXPERIMENTAL.  Not used.
+web2py/            EXPERIMENTAL.  Not used.
+conda_install.sh   Installation with Miniconda.
 
 
 
@@ -102,6 +103,13 @@ these dependencies and installing just the ones that you may use.  You
 can install additional ones later if you run into problems during your
 analysis (e.g. you get an error message saying that something is
 missing).
+
+* Brad Chapman (https://github.com/chapmanb) contributed a script
+  (conda_install.sh) that will install these dependencies using the
+  Miniconda system (http://conda.pydata.org/docs/).  You can try using
+  this to simplify the installation process.
+
+
 
 
 - LINUX or OS X (or macOS) operating system.
